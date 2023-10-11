@@ -1,3 +1,4 @@
+# 2023-10-11 23:00
 name: act-Release
 
 on:
@@ -48,6 +49,14 @@ jobs:
         with:
           arch: ${{ matrix.arch }}
 
+      - name: Setup cache
+        uses: deep-soft/cache@v3
+        with:
+          path: ${{ github.workspace }}
+          key: cache-${{ matrix.arch }}
+          restore-keys: |
+            cache-${{ matrix.arch }}
+
       - name: Install vcpkg
         run: |
           cd external\colorer\external\vcpkg
@@ -64,7 +73,7 @@ jobs:
           -username "${{ secrets.PACKAGES_GITHUB_USER }}"
           -password "${{ secrets.PACKAGES_GITHUB_TOKEN }}"
 
-      - name: Create Build forlder
+      - name: Create Build folder
         run: cmake -E make_directory build
 
       - name: Configure CMake
