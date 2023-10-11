@@ -31,9 +31,17 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
+      #- name: Get version
+      #  id: get_version
+      #  uses: deep-soft/get-version-action@v4
+
       - name: Get version
         id: get_version
-        uses: deep-soft/get-version-action@v3
+        shell: bash
+        run: |
+          get_version=$(cat version4far.txt)
+          echo "version=$get_version"
+          echo "version=$get_version" >>$GITHUB_OUTPUT
 
       - name: Add C++ build tools to PATH
         uses: deep-soft/msvc-dev-cmd@v1
