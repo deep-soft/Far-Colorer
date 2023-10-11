@@ -1,0 +1,28 @@
+name: test
+
+on:
+  workflow_dispatch:
+jobs:
+  build:
+      runs-on: windows-2019
+      
+      steps:
+      - name: Checkout source
+        uses: deep-soft/checkout@v4
+
+      - name: Get version
+        id: get_version
+        uses: deep-soft/get-version-action@v4
+
+      - name: show version
+        shell: bash
+        run: |
+          echo "version1=${{ steps.get_version.outputs.version }}"
+
+      - name: Get version
+        id: get_version2
+        shell: bash
+        run: |
+          get_version=$(cat version4far.txt)
+          echo "version=$get_version"
+          echo "version=$get_version" >>$GITHUB_OUTPUT
