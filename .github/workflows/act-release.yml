@@ -121,9 +121,17 @@ jobs:
       - name: Checkout source
         uses: deep-soft/checkout@v4
 
+      #- name: Get version
+      #  id: get_version
+      #  uses: deep-soft/get-version-action@v3
+
       - name: Get version
         id: get_version
-        uses: deep-soft/get-version-action@v3
+        shell: bash
+        run: |
+          get_version=$(cat version4far.txt)
+          echo "version=$get_version"
+          echo "version=$get_version" >>$GITHUB_OUTPUT
 
       - name: Download result
         uses: deep-soft/download-artifact@v3
