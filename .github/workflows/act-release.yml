@@ -116,9 +116,6 @@ jobs:
           zipfilename="$(find . -name "colorer-base*.zip")"
           echo $zipfilename
           7z x -y $zipfilename -o./install/FarColorer/base
-          rm $zipfilename
-          echo "ls3"
-          ls -la *.zip
 
       - name: Set the pack file name
         shell: bash
