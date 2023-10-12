@@ -106,8 +106,11 @@ jobs:
         run: |
           echo "ls1"
           ls -la *.zip
-          rm "colorer-base*.zip"
-          curl -s https://api.github.com/repos/colorer/Colorer-schemes/releases/latest | grep -o "https://.*colorer-base\.allpacked.*.zip" | xargs curl -fsLJO
+          zipfilename="$(find . -name "colorer-base*.zip")"
+          if [[ -f $zipfilename ]]; then
+            rm $zipfilename
+          fi
+          curl -s https://api.github.com/repos/colorer/Colorer-schemes/releases/latest | grep -o "https://.*colorer-base\.allpacked.*.zip" | xargs curl -v -fsLJO
           echo "ls2"
           ls -la *.zip
           zipfilename="$(find . -name "colorer-base*.zip")"
