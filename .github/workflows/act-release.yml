@@ -164,8 +164,19 @@ jobs:
         with:
           name: result
 
-      - name: Create release
-        shell: bash
-        run: gh release create ${{ steps.get_version.outputs.version }} -t "FarColorer ${{ steps.get_version.outputs.version }}" -n "New version" ./*.7z
-        env:
-          GITHUB_TOKEN: ${{github.token}}
+#      - name: Create release
+#        shell: bash
+#        run: gh release create ${{ steps.get_version.outputs.version }} -t "FarColorer ${{ steps.get_version.outputs.version }}" -n "New version" ./*.7z
+#        env:
+#          GITHUB_TOKEN: ${{github.token}}
+
+      - name: Publish Release
+        continue-on-error: false
+        uses: deep-soft/action-gh-release@v1
+        with:
+          draft: false
+          name: ${{ steps.get_version.outputs.version }}
+          tag_name: "FarColorer ${{ steps.get_version.outputs.version }}"
+          body: "New version: ${{ steps.get_version.outputs.version }}"
+          files: |
+            ./*.7z
