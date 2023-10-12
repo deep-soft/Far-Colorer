@@ -104,9 +104,16 @@ jobs:
         working-directory: build
         shell: bash
         run: |
+          echo "ls1"
+          ls -la *.zip
           curl -s https://api.github.com/repos/colorer/Colorer-schemes/releases/latest | grep -o "https://.*colorer-base\.allpacked.*.zip" | xargs curl -fsLJO
+          echo "ls2"
+          ls -la *.zip
           zipfilename="$(find . -name "colorer-base*.zip")"
           7z x $zipfilename -o./install/FarColorer/base
+          rm $zipfilename
+          echo "ls3"
+          ls -la *.zip
 
       - name: Set the pack file name
         shell: bash
