@@ -110,11 +110,12 @@ jobs:
           if [[ -f $zipfilename ]]; then
             rm $zipfilename
           fi
-          curl -s https://api.github.com/repos/colorer/Colorer-schemes/releases/latest | grep -o "https://.*colorer-base\.allpacked.*.zip" | xargs curl -v -fsLJO
-          echo "ls2"
-          ls -la *.zip
+          curl -s https://api.github.com/repos/colorer/Colorer-schemes/releases/latest | grep -o "https://.*colorer-base\.allpacked.*.zip" | xargs curl -fsLJO
+          #echo "ls2"
+          #ls -la *.zip
           zipfilename="$(find . -name "colorer-base*.zip")"
-          7z x $zipfilename -o./install/FarColorer/base
+          echo $zipfilename
+          7z x -y $zipfilename -o./install/FarColorer/base
           rm $zipfilename
           echo "ls3"
           ls -la *.zip
