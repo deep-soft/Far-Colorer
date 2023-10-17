@@ -134,6 +134,11 @@ jobs:
         working-directory: build
         shell: bash
         run: |
+          if [[ -f ${{ env.farcolorer_name }} ]]; then
+            rm ${{ env.farcolorer_name }} || true;
+            rm ${{ env.farcolorer_pdb_name }} || true;
+            rm ${{ env.farcolorer_withoutbase_name }} || true;
+          fi
           7z a -m0=LZMA -mf=BCJ2 -mx9 ${{ env.farcolorer_name }} ./install/FarColorer/* -xr!colorerpol.* -xr!colorerr.*
           7z a -m0=LZMA -mf=BCJ2 -mx9 ${{ env.farcolorer_withoutbase_name }} ./install/FarColorer/* -x!./install/FarColorer/base
           7z a -m0=LZMA -mf=off -mx9 ${{ env.farcolorer_pdb_name }} ./src/colorer.pdb
