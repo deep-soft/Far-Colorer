@@ -6,6 +6,8 @@ on:
 #  push:
 #    tags:
 #      - "v*"
+env:
+  PROG_NAME: 'Far-Colorer'
 
 jobs:
 
@@ -94,7 +96,7 @@ jobs:
           -DVCPKG_OVERLAY_PORTS=$GITHUB_WORKSPACE/external/colorer/external/vcpkg-ports
           -DVCPKG_OVERLAY_TRIPLETS=$GITHUB_WORKSPACE/external/colorer/external/vcpkg-triplets
           -DVCPKG_FEATURE_FLAGS=manifests,versions
-          -DCMAKE_INSTALL_PREFIX=./install/FarColorer
+          -DCMAKE_INSTALL_PREFIX=./install/${{ env.PROG_NAME }}
 
       - name: Build
         working-directory: build
@@ -121,14 +123,14 @@ jobs:
           #ls -la *.zip
           zipfilename="$(find . -name "colorer-base*.zip")"
           echo $zipfilename
-          7z x -y $zipfilename -o./install/FarColorer/base
+          7z x -y $zipfilename -o./install/${{ env.PROG_NAME }}/base
 
       - name: Set the pack file name
         shell: bash
         run: |
-          echo "farcolorer_name=FarColorer.${{ matrix.build }}.${{ steps.get_version.outputs.version }}.7z" >> $GITHUB_ENV
-          echo "farcolorer_pdb_name=FarColorer.${{ matrix.build }}.${{ steps.get_version.outputs.version }}.pdb.7z" >> $GITHUB_ENV
-          echo "farcolorer_withoutbase_name=FarColorer.${{ matrix.build }}.${{ steps.get_version.outputs.version }}.wobase.7z" >> $GITHUB_ENV
+          echo "farcolorer_name=${{ env.PROG_NAME }}.${{ matrix.build }}.${{ steps.get_version.outputs.version }}.7z" >> $GITHUB_ENV
+          echo "farcolorer_pdb_name=${{ env.PROG_NAME }}.${{ matrix.build }}.${{ steps.get_version.outputs.version }}.pdb.7z" >> $GITHUB_ENV
+          echo "farcolorer_withoutbase_name=${{ env.PROG_NAME }}.${{ matrix.build }}.${{ steps.get_version.outputs.version }}.wobase.7z" >> $GITHUB_ENV
 
       - name: pack plugin
         working-directory: build
@@ -139,8 +141,8 @@ jobs:
             rm ${{ env.farcolorer_pdb_name }} || true;
             rm ${{ env.farcolorer_withoutbase_name }} || true;
           fi
-          7z a -m0=LZMA -mf=BCJ2 -mx9 ${{ env.farcolorer_name }} ./install/FarColorer/* -xr!colorerpol.* -xr!colorerr.*
-          7z a -m0=LZMA -mf=BCJ2 -mx9 ${{ env.farcolorer_withoutbase_name }} ./install/FarColorer/* -x!./install/FarColorer/base
+          7z a -m0=LZMA -mf=BCJ2 -mx9 ${{ env.farcolorer_name }} ./install/${{ env.PROG_NAME }}/* -xr!colorerpol.* -xr!colorerr.*
+          7z a -m0=LZMA -mf=BCJ2 -mx9 ${{ env.farcolorer_withoutbase_name }} ./install/${{ env.PROG_NAME }}/* -x!./install/${{ env.PROG_NAME }}/base
           7z a -m0=LZMA -mf=off -mx9 ${{ env.farcolorer_pdb_name }} ./src/colorer.pdb
 
       - name: Upload result to cache
@@ -178,7 +180,7 @@ jobs:
 
 #      - name: Create release
 #        shell: bash
-#        run: gh release create ${{ steps.get_version.outputs.version }} -t "FarColorer ${{ steps.get_version.outputs.version }}" -n "New version" ./*.7z
+#        run: gh release create ${{ steps.get_version.outputs.version }} -t "${{ env.PROG_NAME }} ${{ steps.get_version.outputs.version }}" -n "New version" ./*.7z
 #        env:
 #          GITHUB_TOKEN: ${{github.token}}
 
@@ -198,21 +200,21 @@ jobs:
         run: |
           rm *pdb.7z || true;
           rm *wobase.7z || true;
-          mv FarColorer.x64*.7z FarColorer.x64.7z
-          mv FarColorer.x86*.7z FarColorer.x86.7z
-          mv FarColorer.ARM64*.7z FarColorer.ARM64.7z
-          echo ${{ env.version }} > FarColorer-latest.txt
+          mv ${{ env.PROG_NAME }}.x64*.7z ${{ env.PROG_NAME }}.x64.7z
+          mv ${{ env.PROG_NAME }}.x86*.7z ${{ env.PROG_NAME }}.x86.7z
+          mv ${{ env.PROG_NAME }}.ARM64*.7z ${{ env.PROG_NAME }}.ARM64.7z
+          echo ${{ env.version }} > ${{ env.PROG_NAME }}-latest.txt
 
       - name: Publish latest Release
         continue-on-error: false
         uses: deep-soft/action-gh-release@v1
         with:
           draft: false
-          tag_name: Far-Colorer-latest
+          tag_name: ${{ env.PROG_NAME }}-latest
           body: "Far Colorer latest: v${{ env.version }}"
           files: |
             ./*.7z
-            FarColorer-latest.txt
+            ${{ env.PROG_NAME }}-latest.txt
 
       - name: Cleanup
         continue-on-error: true
