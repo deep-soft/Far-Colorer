@@ -109,18 +109,19 @@ jobs:
         run: cmake --install . --config $BUILD_TYPE
 
       - name: Download scheme
+        continue-on-error: true
         working-directory: build
         shell: bash
         run: |
-          echo "ls1"
-          ls -la *.zip
+          # echo "ls1"
+          # ls -la *.zip || true
           zipfilename="$(find . -name "colorer-base*.zip")"
           if [[ -f $zipfilename ]]; then
             rm $zipfilename
           fi
           curl -s https://api.github.com/repos/colorer/Colorer-schemes/releases/latest | grep -o "https://.*colorer-base\.allpacked.*.zip" | xargs curl -fsLJO
-          #echo "ls2"
-          #ls -la *.zip
+          # echo "ls2"
+          # ls -la *.zip
           zipfilename="$(find . -name "colorer-base*.zip")"
           echo $zipfilename
           7z x -y $zipfilename -o./install/${{ env.PROG_NAME }}/base
