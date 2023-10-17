@@ -175,8 +175,7 @@ jobs:
         uses: deep-soft/action-gh-release@v1
         with:
           draft: false
-          name: ${{ steps.get_version.outputs.version }}
-          tag_name: "FarColorer ${{ steps.get_version.outputs.version }}"
-          body: "New version: ${{ steps.get_version.outputs.version }}"
+          tag_name: "v${{ steps.get_version.outputs.version }}"
+          body: "Far Colorer: v${{ steps.get_version.outputs.version }}"
           files: |
             ./*.7z
