@@ -201,6 +201,7 @@ jobs:
           mv FarColorer.x64*.7z FarColorer.x64.7z
           mv FarColorer.x86*.7z FarColorer.x86.7z
           mv FarColorer.ARM64*.7z FarColorer.ARM64.7z
+          echo ${{ env.version }} > FarColorer-latest.txt
 
       - name: Publish latest Release
         continue-on-error: false
@@ -211,6 +212,7 @@ jobs:
           body: "Far Colorer latest: v${{ env.version }}"
           files: |
             ./*.7z
+            FarColorer-latest.txt
 
       - name: Cleanup
         continue-on-error: true
