@@ -61,7 +61,6 @@ jobs:
         continue-on-error: true
         shell: bash
         run: |
-          #rm ./*.7z; op_result=$?
           rm ./*.7z || true;
 
       - name: Install vcpkg
@@ -165,6 +164,7 @@ jobs:
           get_version=$(cat version4far.txt)
           echo "version=$get_version"
           echo "version=$get_version" >>$GITHUB_OUTPUT
+          echo "version=$get_version" >>$GITHUB_ENV
 
       - name: Download result
         uses: deep-soft/download-artifact@v3
@@ -191,8 +191,8 @@ jobs:
         continue-on-error: false
         shell: bash
         run: |
-          rm *pdb.7z; op_result=$?
-          rm *wobase.7z; op_result=$?
+          rm *pdb.7z || true;
+          rm *wobase.7z || true;
           mv FarColorer.x64*.7z FarColorer.x64.7z
           mv FarColorer.x86*.7z FarColorer.x86.7z
           mv FarColorer.ARM64*.7z FarColorer.ARM64.7z
@@ -211,7 +211,5 @@ jobs:
         continue-on-error: true
         shell: bash
         run: |
-          #rm ./*.7z; op_result=$?
-          #rm ./*.zip; op_result=$?
           rm ./*.7z || true;
           rm ./*.zip || true;
