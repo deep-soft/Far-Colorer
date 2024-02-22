@@ -1,10 +1,11 @@
-#ifndef _FARHRCSETTINGS_H_
-#define _FARHRCSETTINGS_H_
+#ifndef FARCOLORER_FARHRCSETTINGS_H
+#define FARCOLORER_FARHRCSETTINGS_H
 
 #include <colorer/FileType.h>
 #include <colorer/HrcLibrary.h>
 #include <colorer/ParserFactory.h>
 #include <xercesc/dom/DOM.hpp>
+#include "FarEditorSet.h"
 
 const wchar_t FarCatalogXml[] = L"\\base\\catalog.xml";
 const wchar_t FarProfileXml[] = L"\\bin\\hrcsettings.xml";
@@ -19,21 +20,21 @@ class FarHrcSettingsException : public Exception
 class FarHrcSettings
 {
  public:
-  explicit FarHrcSettings(ParserFactory* _parserFactory)
+  explicit FarHrcSettings(FarEditorSet* _farEditorSet, ParserFactory* _parserFactory)
   {
     parserFactory = _parserFactory;
+    farEditorSet = _farEditorSet;
   }
-  void readXML(UnicodeString* file, bool userValue);
-  void readProfile(UnicodeString* plugin_path);
+  void readXML(UnicodeString* file);
+  void readPluginHrcSettings(UnicodeString* plugin_path);
   void readUserProfile();
   void writeUserProfile();
 
  private:
-  void UpdatePrototype(xercesc::DOMElement* elem, bool userValue);
-  void readProfileFromRegistry();
-  void writeProfileToRegistry();
+  void UpdatePrototype(xercesc::DOMElement* elem);
 
   ParserFactory* parserFactory;
+  FarEditorSet* farEditorSet;
 };
 
-#endif
+#endif // FARCOLORER_FARHRCSETTINGS_H

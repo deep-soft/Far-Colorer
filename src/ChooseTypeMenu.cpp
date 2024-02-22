@@ -64,7 +64,7 @@ size_t ChooseTypeMenu::AddItem(const wchar_t* Text, const MENUITEMFLAGS Flags, c
 
   Item[PosAdd].Flags = Flags;
   Item[PosAdd].Text = _wcsdup(Text);
-  Item[PosAdd].UserData = (DWORD_PTR) UserData;
+  Item[PosAdd].UserData = (intptr_t) UserData;
   ZeroMemory(Item[PosAdd].Reserved, sizeof(Item[PosAdd].Reserved));
   Item[PosAdd].AccelKey.ControlKeyState = 0;
   Item[PosAdd].AccelKey.VirtualKeyCode = 0;
@@ -119,15 +119,11 @@ FileType* ChooseTypeMenu::GetFileType(size_t index) const
 
 void ChooseTypeMenu::MoveToFavorites(size_t index)
 {
-  auto* f = (FileType*) Item[index].UserData;
+  auto* f = GetFileType(index);
   DeleteItem(index);
   size_t k = AddFavorite(f);
   SetSelected(k);
   HideEmptyGroup();
-  if (f->getParamValue(UnicodeString(param_Favorite)) == nullptr) {
-    f->addParam(UnicodeString(param_Favorite));
-  }
-  f->setParamValue(UnicodeString(param_Favorite), UnicodeString(value_True));
 }
 
 size_t ChooseTypeMenu::AddFavorite(const FileType* fType)
@@ -168,8 +164,8 @@ void ChooseTypeMenu::DelFromFavorites(size_t index)
 size_t ChooseTypeMenu::AddItemInGroup(FileType* fType)
 {
   size_t i;
-  const UnicodeString* group = fType->getGroup();
-  for (i = favorite_idx; i < ItemCount && !((Item[i].Flags & MIF_SEPARATOR) && (group->compare(UnicodeString(Item[i].Text)) == 0)); i++)
+  auto group = fType->getGroup();
+  for (i = favorite_idx; i < ItemCount && !((Item[i].Flags & MIF_SEPARATOR) && (group.compare(UnicodeString(Item[i].Text)) == 0)); i++)
     ;
   if (Item[i].Flags & MIF_HIDDEN) {
     Item[i].Flags &= ~MIF_HIDDEN;
@@ -212,7 +208,7 @@ UnicodeString* ChooseTypeMenu::GenerateName(const FileType* fType)
   else {
     s->append(" ");
   }
-  s->append(" ").append(*((FileType*) fType)->getDescription());
+  s->append(" ").append(fType->getDescription());
 
   return s;
 }

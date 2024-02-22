@@ -1,5 +1,5 @@
-#ifndef _HRCSETTINGSFORM_H_
-#define _HRCSETTINGSFORM_H_
+#ifndef FARCOLORER_HRCSETTINGSFORM_H
+#define FARCOLORER_HRCSETTINGSFORM_H
 
 #include "FarEditorSet.h"
 
@@ -23,7 +23,7 @@ class HrcSettingsForm
   void setYNListValueToCombobox(const UnicodeString& param) const;
   void setCrossPosValueListToCombobox() const;
   void setCrossValueListToCombobox() const;
-  void ChangeParamValueListType(bool dropdownlist) const;
+  void ChangeParamValueList(FarList* items, bool dropdownlist) const;
   FarList* buildParamsList(FileType* type) const;
   const UnicodeString* getParamDefValue(FileType* type, const UnicodeString& param) const;
   [[nodiscard]] size_t getCountFileTypeAndGroup() const;
@@ -38,4 +38,4 @@ class HrcSettingsForm
   HANDLE hDlg {};
 };
 
-#endif  // _HRCSETTINGSFORM_H_
+#endif  // FARCOLORER_HRCSETTINGSFORM_H

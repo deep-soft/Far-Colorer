@@ -9,6 +9,7 @@
 #include <xercesc/parsers/XercesDOMParser.hpp>
 #include "DlgBuilder.hpp"
 #include "HrcSettingsForm.h"
+#include "FarHrcSettings.h"
 #include "SettingsControl.h"
 #include "tools.h"
 
@@ -212,7 +213,7 @@ void FarEditorSet::viewFile(const UnicodeString& path)
     baseEditor.lineCountEvent((int) textLinesStore.getLineCount());
     // computing background color
     unsigned int background = 0x1F;
-    const StyledRegion* rd = StyledRegion::cast(regionMap->getRegionDefine(UnicodeString("def:Text")));
+    const StyledRegion* rd = StyledRegion::cast(regionMap->getRegionDefine(UnicodeString(region_DefText)));
 
     if (rd != nullptr && rd->isForeSet && rd->isBackSet) {
       background = rd->fore + (rd->back << 4);
@@ -229,7 +230,7 @@ void FarEditorSet::viewFile(const UnicodeString& path)
 
 void FarEditorSet::FillTypeMenu(ChooseTypeMenu* Menu, FileType* CurFileType) const
 {
-  const UnicodeString* group = &DAutodetect;
+  UnicodeString group = DAutodetect;
   FileType* type = nullptr;
   HrcLibrary& hrcLibrary= parserFactory->getHrcLibrary();
 
@@ -240,7 +241,7 @@ void FarEditorSet::FillTypeMenu(ChooseTypeMenu* Menu, FileType* CurFileType) con
       break;
     }
 
-    if (group != nullptr && group->compare(*type->getGroup()) != 0) {
+    if (group.compare(type->getGroup()) != 0) {
       Menu->AddGroup(UStr::to_stdwstr(type->getGroup()).c_str());
       group = type->getGroup();
     }
@@ -310,7 +311,9 @@ bool FarEditorSet::chooseType()
     if (i >= 0) {
       if (BreakCode == 0) {
         if (i != 0 && !menu.IsFavorite(i)) {
+          auto f = menu.GetFileType(i);
           menu.MoveToFavorites(i);
+          addParamAndValue(f, UnicodeString(param_Favorite), UnicodeString(value_True));
         }
         else {
           menu.SetSelected(i);
@@ -350,11 +353,10 @@ bool FarEditorSet::chooseType()
         if (res != -1) {
           KeyAssignDlgData[2].Data =
               static_cast<const wchar_t*>(trim(reinterpret_cast<wchar_t*>(Info.SendDlgMessage(hDlg, DM_GETCONSTTEXTPTR, 2, nullptr))));
-          if (menu.GetFileType(i)->getParamValue(UnicodeString(param_HotKey)) == nullptr) {
-            dynamic_cast<FileType*>(menu.GetFileType(i))->addParam(UnicodeString(param_HotKey));
-          }
-          UnicodeString hotkey = UnicodeString(KeyAssignDlgData[2].Data);
-          menu.GetFileType(i)->setParamValue(UnicodeString(param_HotKey), &hotkey);
+          auto ftype = menu.GetFileType(i);
+          auto param_name = UnicodeString(param_HotKey);
+          auto hotkey = UnicodeString(KeyAssignDlgData[2].Data);
+          addParamAndValue(ftype, param_name, hotkey);
           menu.RefreshItemCaption(i);
         }
         menu.SetSelected(i);
@@ -376,7 +378,7 @@ bool FarEditorSet::chooseType()
     }
   }
 
-  FarHrcSettings p(parserFactory.get());
+  FarHrcSettings p(this, parserFactory.get());
   p.writeUserProfile();
   return true;
 }
@@ -410,6 +412,12 @@ INT_PTR WINAPI SettingDialogProc(HANDLE hDlg, intptr_t Msg, intptr_t Param1, voi
     int CurPosCons = (int) Info.SendDlgMessage(hDlg, DM_LISTGETCURPOS, fes->settingWindow.hrdCons, nullptr);
     int CurPosTm = (int) Info.SendDlgMessage(hDlg, DM_LISTGETCURPOS, fes->settingWindow.hrdTM, nullptr);
 
+    int k = static_cast<int>(Info.SendDlgMessage(hDlg, DM_GETCHECK, fes->settingWindow.turnOff, nullptr));
+
+    if (k == BSTATE_UNCHECKED) {
+      // не проверяем настройки у отключенного плагина
+      return false;
+    }
     return !fes->TestLoadBase(temp, userhrd, userhrc, UStr::to_stdwstr(&fes->hrd_con_instances.at(CurPosCons)->hrd_name).c_str(),
                               UStr::to_stdwstr(&fes->hrd_rgb_instances.at(CurPosTm)->hrd_name).c_str(), false, FarEditorSet::HRC_MODE::HRCM_BOTH);
   }
@@ -423,6 +431,7 @@ bool FarEditorSet::configure()
   try {
     PluginDialogBuilder Builder(Info, MainGuid, PluginConfig, mSetup, L"config", SettingDialogProc, this);
     Builder.AddCheckbox(mTurnOff, &Opt.rEnabled);
+    settingWindow.turnOff = Builder.GetLastID();
     Builder.AddSeparator();
     Builder.AddText(mCatalogFile);
     Builder.AddEditField(Opt.CatalogPath, MAX_PATH, 65, L"catalog");
@@ -441,6 +450,7 @@ bool FarEditorSet::configure()
     unsigned long flag_disable = 0;
     int current_style;
     std::unique_ptr<HrdNode> cons, rgb;
+    hrd_con_instances.clear();
     if (Opt.rEnabled) {
       hrd_con_instances = parserFactory->enumHrdInstances(DConsole);
       current_style = getHrdArrayWithCurrent(Opt.HrdName, &hrd_con_instances, &console_style);
@@ -462,6 +472,7 @@ bool FarEditorSet::configure()
     std::vector<const wchar_t*> rgb_style;
     flag_disable = 0;
     int current_rstyle;
+    hrd_rgb_instances.clear();
     if (Opt.rEnabled) {
       hrd_rgb_instances = parserFactory->enumHrdInstances(DRgb);
       current_rstyle = getHrdArrayWithCurrent(Opt.HrdNameTm, &hrd_rgb_instances, &rgb_style);
@@ -504,7 +515,7 @@ bool FarEditorSet::configure()
         wcsncpy(Opt.HrdName, UStr::to_stdwstr(&hrd_con_instances.at(current_style)->hrd_name).c_str(), std::size(Opt.HrdName));
         wcsncpy(Opt.HrdNameTm, UStr::to_stdwstr(&hrd_rgb_instances.at(current_rstyle)->hrd_name).c_str(), std::size(Opt.HrdNameTm));
       }
-      if (cross_style_id != Opt.CrossStyle)
+      if (cross_style_id + 1 != Opt.CrossStyle)
         Opt.CrossStyle = cross_style_id + 1;
       SaveSettings();
       if (Opt.rEnabled) {
@@ -513,6 +524,8 @@ bool FarEditorSet::configure()
       else {
         disableColorer();
       }
+      hrd_rgb_instances.clear();
+      hrd_con_instances.clear();
     }
 
     Info.EditorControl(CurrentEditor, ECTL_REDRAW, 0, nullptr);
@@ -662,8 +675,8 @@ bool FarEditorSet::TestLoadBase(const wchar_t* catalogPath, const wchar_t* userH
     auto& hrcLibraryLocal = parserFactoryLocal->getHrcLibrary();
     LoadUserHrd(userHrdPathS.get(), parserFactoryLocal.get());
     LoadUserHrc(userHrcPathS.get(), parserFactoryLocal.get());
-    FarHrcSettings p(parserFactoryLocal.get());
-    p.readProfile(pluginPath.get());
+    FarHrcSettings p(this, parserFactoryLocal.get());
+    p.readPluginHrcSettings(pluginPath.get());
     p.readUserProfile();
 
     if (hrc_mode == HRC_MODE::HRCM_CONSOLE || hrc_mode == HRC_MODE::HRCM_BOTH) {
@@ -697,11 +710,11 @@ bool FarEditorSet::TestLoadBase(const wchar_t* catalogPath, const wchar_t* userH
         UnicodeString tname;
 
         if (type->getGroup() != nullptr) {
-          tname.append(*type->getGroup());
+          tname.append(type->getGroup());
           tname.append(": ");
         }
 
-        tname.append(*type->getDescription());
+        tname.append(type->getDescription());
         std::wstring str_message = UStr::to_stdwstr(&tname);
         marr[1] = str_message.c_str();
         Info.Message(&MainGuid, &ReloadBaseMessage, 0, nullptr, &marr[0], 2, 0);
@@ -752,12 +765,12 @@ void FarEditorSet::ReloadBase()
     parserFactory = std::make_unique<ParserFactory>();
     parserFactory->loadCatalog(sCatalogPathExp.get());
     HrcLibrary& hrcLibrary = parserFactory->getHrcLibrary();
+    defaultType = hrcLibrary.getFileType(UnicodeString(name_DefaultScheme));
     LoadUserHrd(sUserHrdPathExp.get(), parserFactory.get());
     LoadUserHrc(sUserHrcPathExp.get(), parserFactory.get());
-    FarHrcSettings p(parserFactory.get());
-    p.readProfile(pluginPath.get());
+    FarHrcSettings p(this, parserFactory.get());
+    p.readPluginHrcSettings(pluginPath.get());
     p.readUserProfile();
-    defaultType = dynamic_cast<FileType*>(hrcLibrary.getFileType(UnicodeString(name_DefaultScheme)));
 
     try {
       regionMapper = parserFactory->createStyledMapper(&hrdClass, &hrdName);
@@ -791,8 +804,7 @@ size_t FarEditorSet::getEditorCount() const
 
 FarEditor* FarEditorSet::addCurrentEditor()
 {
-  EditorInfo ei {};
-  ei.StructSize = sizeof(EditorInfo);
+  EditorInfo ei {sizeof(EditorInfo)};
   if (!Info.EditorControl(CurrentEditor, ECTL_GETINFO, 0, &ei)) {
     return nullptr;
   }
@@ -836,8 +848,7 @@ UnicodeString* FarEditorSet::getCurrentFileName()
 
 FarEditor* FarEditorSet::getCurrentEditor()
 {
-  EditorInfo ei {};
-  ei.StructSize = sizeof(EditorInfo);
+  EditorInfo ei {sizeof(EditorInfo)};
   if (!Info.EditorControl(CurrentEditor, ECTL_GETINFO, 0, &ei)) {
     return nullptr;
   }
@@ -890,8 +901,7 @@ void FarEditorSet::ApplySettingsToEditors()
 
 void FarEditorSet::dropCurrentEditor(bool clean)
 {
-  EditorInfo ei {};
-  ei.StructSize = sizeof(EditorInfo);
+  EditorInfo ei {sizeof(EditorInfo)};
   Info.EditorControl(CurrentEditor, ECTL_GETINFO, 0, &ei);
   auto it_editor = farEditorInstances.find(ei.EditorID);
   if (it_editor != farEditorInstances.end()) {
@@ -1006,14 +1016,9 @@ void FarEditorSet::SaveLogSettings() const
 bool FarEditorSet::SetBgEditor() const
 {
   if (Opt.rEnabled && Opt.ChangeBgEditor) {
-    const StyledRegion* def_text = StyledRegion::cast(regionMapper->getRegionDefine(UnicodeString("def:Text")));
+    const StyledRegion* def_text = StyledRegion::cast(regionMapper->getRegionDefine(UnicodeString(region_DefText)));
 
-    FarSetColors fsc {};
     FarColor fc {};
-    fsc.StructSize = sizeof(FarSetColors);
-    fsc.Flags = FSETCLR_REDRAW;
-    fsc.ColorsCount = 1;
-    fsc.StartIndex = COL_EDITORTEXT;
     if (Opt.TrueModOn) {
       fc.Flags = 0;
       fc.BackgroundColor = revertRGB(def_text->back);
@@ -1026,7 +1031,7 @@ bool FarEditorSet::SetBgEditor() const
       fc.BackgroundColor = def_text->back;
       fc.ForegroundColor = def_text->fore;
     }
-    fsc.Colors = &fc;
+    FarSetColors fsc {sizeof(FarSetColors), FSETCLR_REDRAW, COL_EDITORTEXT, 1, &fc};
     return Info.AdvControl(&MainGuid, ACTL_SETARRAYCOLOR, 0, &fsc) != 0;
   }
   return false;
@@ -1193,8 +1198,7 @@ int FarEditorSet::getHrdArrayWithCurrent(const wchar_t* current, std::vector<con
 
 void FarEditorSet::disableColorerInEditor()
 {
-  EditorInfo ei {};
-  ei.StructSize = sizeof(EditorInfo);
+  EditorInfo ei {sizeof(EditorInfo)};
   if (!Info.EditorControl(CurrentEditor, ECTL_GETINFO, 0, &ei)) {
     return;
   }
@@ -1212,8 +1216,7 @@ void FarEditorSet::disableColorerInEditor()
 
 void FarEditorSet::enableColorerInEditor()
 {
-  EditorInfo ei {};
-  ei.StructSize = sizeof(EditorInfo);
+  EditorInfo ei {sizeof(EditorInfo)};
   if (!Info.EditorControl(CurrentEditor, ECTL_GETINFO, 0, &ei)) {
     return;
   }
@@ -1240,6 +1243,15 @@ void FarEditorSet::removeEventTimer()
   if (hTimer)
     DeleteTimerQueueTimer(hTimerQueue, hTimer, nullptr);
   hTimer = nullptr;
+}
+
+void FarEditorSet::addParamAndValue(FileType* filetype, const UnicodeString& name, const UnicodeString& value)
+{
+  if (filetype->getParamValue(name) == nullptr) {
+    auto default_value = defaultType->getParamValue(name);
+    filetype->addParam(name, *default_value);
+  }
+  filetype->setParamValue(name, &value);
 }
 
 #pragma region macro_functions
@@ -1349,7 +1361,7 @@ void* FarEditorSet::macroSettings(FARMACROAREA area, OpenMacroInfo* params)
   if (UnicodeString("SaveSettings").caseCompare(command, 0) == 0) {
     SaveSettings();
     SaveLogSettings();
-    FarHrcSettings p(parserFactory.get());
+    FarHrcSettings p(this, parserFactory.get());
     p.writeUserProfile();
     return INVALID_HANDLE_VALUE;
   }
@@ -1771,16 +1783,13 @@ void* FarEditorSet::macroParams(FARMACROAREA area, OpenMacroInfo* params)
   if (UnicodeString("Set").caseCompare(command, 0) == 0) {
     if (params->Count > 3 && FMVT_STRING == params->Values[2].Type && FMVT_STRING == params->Values[3].Type) {
       UnicodeString type = UnicodeString(params->Values[2].String);
-      UnicodeString param_name = UnicodeString(params->Values[3].String);
       auto* file_type = hrcLibrary.getFileType(&type);
       if (file_type) {
+        UnicodeString param_name = UnicodeString(params->Values[3].String);
         if (params->Count > 4 && FMVT_STRING == params->Values[4].Type) {
           // replace value
           UnicodeString param_value = UnicodeString(params->Values[4].String);
-          if (file_type->getParamValue(param_value) == nullptr) {
-            file_type->addParam(&param_value);
-          }
-          file_type->setParamValue(param_name, &param_value);
+          addParamAndValue(file_type, param_name, param_value);
         }
         else if (params->Count == 4) {
           // remove value

@@ -1,5 +1,5 @@
-#ifndef _FAREDITORSET_H_
-#define _FAREDITORSET_H_
+#ifndef FARCOLORER_FAREDITORSET_H
+#define FARCOLORER_FAREDITORSET_H
 
 #include <colorer/handlers/LineRegionsSupport.h>
 #include <colorer/parsers/HRDNode.h>
@@ -7,7 +7,6 @@
 #include <spdlog/logger.h>
 #include "ChooseTypeMenu.h"
 #include "FarEditor.h"
-#include "FarHrcSettings.h"
 #include "pcolorer.h"
 
 // registry keys
@@ -91,6 +90,7 @@ struct Options
 
 struct SettingWindow
 {
+  int turnOff;
   int okButtonConfig;
   int catalogEdit;
   int hrcEdit;
@@ -100,6 +100,7 @@ struct SettingWindow
 };
 
 class HrcSettingsForm;
+class FarHrcSettings;
 /**
  * FAR Editors container.
  * Manages all library resources and creates FarEditor class instances.
@@ -108,6 +109,7 @@ class HrcSettingsForm;
 class FarEditorSet
 {
   friend HrcSettingsForm;
+  friend FarHrcSettings;
 
  public:
   /** Creates set and initialises it with PluginStartupInfo structure */
@@ -168,7 +170,7 @@ class FarEditorSet
   /** Show logging configuration dialog*/
   bool configureLogging();
 
-  void showExceptionMessage(const UnicodeString* message);
+  static void showExceptionMessage(const UnicodeString* message);
   void applyLogSetting();
   [[nodiscard]] size_t getEditorCount() const;
 
@@ -226,7 +228,7 @@ class FarEditorSet
     CONFIGURE
   };
 
-  MENU_ACTION showMenu(bool full_menu);
+  static MENU_ACTION showMenu(bool full_menu);
   void execMenuAction(MENU_ACTION action, FarEditor* editor);
 
   void* macroSettings(FARMACROAREA area, OpenMacroInfo* params);
@@ -242,11 +244,13 @@ class FarEditorSet
   void disableColorerInEditor();
   void enableColorerInEditor();
   void FillTypeMenu(ChooseTypeMenu* Menu, FileType* CurFileType) const;
-  UnicodeString* getCurrentFileName();
+  static UnicodeString* getCurrentFileName();
 
-  int getHrdArrayWithCurrent(const wchar_t* current, std::vector<const HrdNode*>* hrd_instances, std::vector<const wchar_t*>* out_array);
+  static int getHrdArrayWithCurrent(const wchar_t* current, std::vector<const HrdNode*>* hrd_instances, std::vector<const wchar_t*>* out_array);
   // filetype "default"
   FileType* defaultType = nullptr;
+  void addParamAndValue(FileType* filetype, const UnicodeString& name, const UnicodeString& value);
+
   std::unordered_map<intptr_t, FarEditor*> farEditorInstances;
   std::unique_ptr<ParserFactory> parserFactory;
   std::unique_ptr<RegionMapper> regionMapper;
@@ -271,4 +275,4 @@ class FarEditorSet
   bool ignore_event = false;
 };
 
-#endif
+#endif // FARCOLORER_FAREDITORSET_H

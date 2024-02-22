@@ -1,5 +1,5 @@
-#ifndef _FAREDITOR_H_
-#define _FAREDITOR_H_
+#ifndef FARCOLORER_FAREDITOR_H
+#define FARCOLORER_FAREDITOR_H
 
 #include <colorer/editor/BaseEditor.h>
 #include <colorer/editor/Outliner.h>
@@ -154,14 +154,13 @@ class FarEditor : public LineSource
   intptr_t editor_id = -1;
 
   void reloadTypeSettings();
-  EditorInfo enterHandler();
+  EditorInfo getEditorInfo();
   FarColor convert(const StyledRegion* rd) const;
-  [[nodiscard]] bool foreDefault(const FarColor& col) const;
-  [[nodiscard]] bool backDefault(const FarColor& col) const;
   void showOutliner(Outliner* outliner);
   void addFARColor(intptr_t lno, intptr_t s, intptr_t e, const FarColor& col, EDITORCOLORFLAGS TabMarkStyle = 0) const;
-  void deleteFarColor(intptr_t lno, intptr_t s) const;
+  void deleteFarColor(intptr_t lno, intptr_t s = -1) const;
   [[nodiscard]] const wchar_t* GetMsg(int msg) const;
   static COLORREF getSuitableColor(COLORREF base_color, COLORREF blend_color);
+  void drawCross(const EditorInfo& ei, intptr_t lno, intptr_t ecp_cl) const;
 };
-#endif
+#endif // FARCOLORER_FAREDITOR_H
