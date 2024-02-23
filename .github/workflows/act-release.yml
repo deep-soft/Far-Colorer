@@ -43,7 +43,8 @@ jobs:
         run: |
           get_version=$(cat version4far.txt)
           echo "version=$get_version"
-          echo "version=$get_version" >>$GITHUB_OUTPUT
+          echo "version=$get_version" >> $GITHUB_OUTPUT
+          echo "version=$get_version" >> $GITHUB_ENV
 
       - name: Add C++ build tools to PATH
         uses: deep-soft/msvc-dev-cmd@v1
@@ -145,9 +146,9 @@ jobs:
             rm ${{ env.farcolorer_pdb_name }} || true;
             rm ${{ env.farcolorer_withoutbase_name }} || true;
           fi
-          7z a -m0=LZMA -mf=BCJ2 -mx9 ${{ env.farcolorer_name }} ./install/${{ env.PROG_NAME }}/* -xr!colorerpol.* -xr!colorerr.*
-          # 7z a -m0=LZMA -mf=BCJ2 -mx9 ${{ env.farcolorer_withoutbase_name }} ./install/${{ env.PROG_NAME }}/* -x!./install/${{ env.PROG_NAME }}/base
-          # 7z a -m0=LZMA -mf=off -mx9 ${{ env.farcolorer_pdb_name }} ./src/colorer.pdb
+          7z a -m0=LZMA -mf=BCJ2 -mx9 ${{ github.workspace }}/${{ env.farcolorer_name }} ./install/${{ env.PROG_NAME }}/* -xr!colorerpol.* -xr!colorerr.*
+          # 7z a -m0=LZMA -mf=BCJ2 -mx9 ${{ github.workspace }}/${{ env.farcolorer_withoutbase_name }} ./install/${{ env.PROG_NAME }}/* -x!./install/${{ env.PROG_NAME }}/base
+          # 7z a -m0=LZMA -mf=off -mx9 ${{ github.workspace }}/${{ env.farcolorer_pdb_name }} ./src/colorer.pdb
 
       - name: Publish Release
         continue-on-error: true
@@ -157,16 +158,16 @@ jobs:
           tag_name: "v${{ env.version }}"
           body: "Far Colorer: v${{ env.version }}"
           files: |
-            ${{ env.farcolorer_name }}
+            ${{ github.workspace }}/${{ env.farcolorer_name }}
 
       - name: Prepare latest Release
         continue-on-error: false
         shell: bash
         run: |
-          rm *pdb.7z || true;
-          rm *wobase.7z || true;
-          mv ${{ env.farcolorer_name }} ${{ env.PROG_NAME }}.${{ matrix.build }}.7z
-          echo ${{ env.version }} > ${{ env.PROG_NAME }}-latest.txt
+          rm ${{ github.workspace }}/*pdb.7z || true;
+          rm ${{ github.workspace }}/*wobase.7z || true;
+          mv ${{ github.workspace }}/${{ env.farcolorer_name }} ${{ github.workspace }}/${{ env.PROG_NAME }}.${{ matrix.build }}.7z
+          echo ${{ env.version }} > ${{ github.workspace }}/${{ env.PROG_NAME }}-latest.txt
 
       - name: Publish latest Release
         continue-on-error: false
@@ -176,8 +177,8 @@ jobs:
           tag_name: ${{ env.PROG_NAME }}-latest
           body: "Far Colorer latest: v${{ env.version }}"
           files: |
-            ${{ env.PROG_NAME }}.${{ matrix.build }}.7z
-            ${{ env.PROG_NAME }}-latest.txt
+            ${{ github.workspace }}/${{ env.PROG_NAME }}.${{ matrix.build }}.7z
+            ${{ github.workspace }}/${{ env.PROG_NAME }}-latest.txt
 
       - name: Cleanup
         continue-on-error: true
