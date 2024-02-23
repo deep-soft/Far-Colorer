@@ -147,18 +147,19 @@ jobs:
             rm ${{ env.farcolorer_withoutbase_name }} || true;
           fi
           7z a -m0=LZMA -mf=BCJ2 -mx9 ${{ github.workspace }}/${{ env.farcolorer_name }} ./install/${{ env.PROG_NAME }}/* -xr!colorerpol.* -xr!colorerr.*
-          # 7z a -m0=LZMA -mf=BCJ2 -mx9 ${{ github.workspace }}/${{ env.farcolorer_withoutbase_name }} ./install/${{ env.PROG_NAME }}/* -x!./install/${{ env.PROG_NAME }}/base
-          # 7z a -m0=LZMA -mf=off -mx9 ${{ github.workspace }}/${{ env.farcolorer_pdb_name }} ./src/colorer.pdb
+          7z a -m0=LZMA -mf=BCJ2 -mx9 ${{ github.workspace }}/${{ env.farcolorer_withoutbase_name }} ./install/${{ env.PROG_NAME }}/* -x!./install/${{ env.PROG_NAME }}/base
+          7z a -m0=LZMA -mf=off  -mx9 ${{ github.workspace }}/${{ env.farcolorer_pdb_name }} ./src/colorer.pdb
 
       - name: Publish Release
         continue-on-error: true
         uses: deep-soft/action-gh-release@v2.1
+        # ${{ github.workspace }}/${{ env.farcolorer_name }}
         with:
           draft: false
           tag_name: "v${{ env.version }}"
           body: "Far Colorer: v${{ env.version }}"
           files: |
-            ${{ github.workspace }}/${{ env.farcolorer_name }}
+            ${{ github.workspace }}/*.7z
 
       - name: Prepare latest Release
         continue-on-error: false
@@ -184,5 +185,5 @@ jobs:
         continue-on-error: true
         shell: bash
         run: |
-          rm ./*.7z || true;
-          rm ./*.zip || true;
+          rm ${{ github.workspace }}/*.7z  || true;
+          rm ${{ github.workspace }}/*.zip || true;
