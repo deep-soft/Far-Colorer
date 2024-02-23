@@ -146,11 +146,6 @@ class FarEditorSet
   bool TestLoadBase(const wchar_t* catalogPath, const wchar_t* userHrdPath, const wchar_t* userHrcPath, const wchar_t* hrdCons, const wchar_t* hrdTm,
                     bool full, HRC_MODE hrc_mode);
 
-  [[nodiscard]] bool GetPluginStatus() const
-  {
-    return Opt.rEnabled;
-  }
-
   [[nodiscard]] bool isEnable() const
   {
     return Opt.rEnabled;
@@ -161,8 +156,6 @@ class FarEditorSet
   void enableColorer();
 
   bool SetBgEditor() const;
-  void LoadUserHrd(const UnicodeString* filename, ParserFactory* pf);
-  void LoadUserHrc(const UnicodeString* filename, ParserFactory* pf);
 
   /** Shows hrc configuration dialog */
   bool configureHrc(bool call_from_editor);
@@ -196,8 +189,8 @@ class FarEditorSet
   bool chooseType();
   /** FAR localized messages */
   static const wchar_t* GetMsg(int msg);
-  /** Applies the current settings for editors*/
-  void ApplySettingsToEditors();
+  /** Applies the current settings for editor*/
+  void applySettingsToEditor(FarEditor* editor);
   /** writes settings in the registry*/
   void SaveSettings() const;
   void SaveLogSettings() const;
@@ -228,7 +221,7 @@ class FarEditorSet
     CONFIGURE
   };
 
-  static MENU_ACTION showMenu(bool full_menu);
+  static FarEditorSet::MENU_ACTION showMenu(bool plugin_enabled, bool editor_enabled);
   void execMenuAction(MENU_ACTION action, FarEditor* editor);
 
   void* macroSettings(FARMACROAREA area, OpenMacroInfo* params);

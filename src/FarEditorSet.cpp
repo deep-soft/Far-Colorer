@@ -1,12 +1,8 @@
 #include "FarEditorSet.h"
 #include <colorer/common/UStr.h>
-#include <colorer/parsers/CatalogParser.h>
-#include <colorer/base/XmlTagDefs.h>
-#include <colorer/xml/XmlParserErrorHandler.h>
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/null_sink.h>
 #include <farcolor.hpp>
-#include <xercesc/parsers/XercesDOMParser.hpp>
 #include "DlgBuilder.hpp"
 #include "HrcSettingsForm.h"
 #include "FarHrcSettings.h"
@@ -80,9 +76,9 @@ void FarEditorSet::menuConfigure()
   }
 }
 
-FarEditorSet::MENU_ACTION FarEditorSet::showMenu(bool full_menu)
+FarEditorSet::MENU_ACTION FarEditorSet::showMenu(bool plugin_enabled, bool editor_enabled)
 {
-  if (full_menu) {
+  if (plugin_enabled && editor_enabled) {
     int iMenuItems[] = {mListTypes,         mMatchPair,      mSelectBlock, mSelectPair,      mListFunctions, mFindErrors, mSelectRegion,
                         mCurrentRegionName, mLocateFunction, -1,           mUpdateHighlight, mReloadBase,    mConfigure};
     const size_t menu_size = std::size(iMenuItems);
@@ -104,7 +100,7 @@ FarEditorSet::MENU_ACTION FarEditorSet::showMenu(bool full_menu)
     if (menu_id != -1)
       return static_cast<MENU_ACTION>(menu_id);
   }
-  else {
+  else if (!plugin_enabled) {
     FarMenuItem menuElements[1] {};
     menuElements[0].Flags = MIF_SELECTED;
     menuElements[0].Text = GetMsg(mConfigure);
@@ -113,6 +109,27 @@ FarEditorSet::MENU_ACTION FarEditorSet::showMenu(bool full_menu)
     if (menu_id != -1)
       return MENU_ACTION::CONFIGURE;
   }
+  else {
+    FarMenuItem menuElements[4] {};
+    menuElements[0].Text = GetMsg(mListTypes);
+    menuElements[1].Flags |= MIF_SEPARATOR;
+    menuElements[2].Text = GetMsg(mReloadBase);
+    menuElements[3].Text = GetMsg(mConfigure);
+    intptr_t menu_id = Info.Menu(&MainGuid, &PluginMenu, -1, -1, 0, FMENU_WRAPMODE, GetMsg(mName), nullptr, L"menu", nullptr, nullptr, menuElements,
+                                 std::size(menuElements));
+
+    switch (menu_id) {
+      case 0:
+        return MENU_ACTION::LIST_TYPE;
+      case 2:
+        return MENU_ACTION::RELOAD_BASE;
+      case 3:
+        return MENU_ACTION::CONFIGURE;
+      default:
+        return MENU_ACTION::NO_ACTION;
+    }
+  }
+
   return MENU_ACTION::NO_ACTION;
 }
 
@@ -175,8 +192,7 @@ void FarEditorSet::openMenu()
 {
   FarEditor* editor = getCurrentEditor();
 
-  bool enabled = Opt.rEnabled && (editor && editor->isColorerEnable());
-  auto menu_id = showMenu(enabled);
+  auto menu_id = showMenu(Opt.rEnabled && editor, editor && editor->isColorerEnable());
   execMenuAction(menu_id, editor);
 }
 
@@ -233,6 +249,10 @@ void FarEditorSet::FillTypeMenu(ChooseTypeMenu* Menu, FileType* CurFileType) con
   UnicodeString group = DAutodetect;
   FileType* type = nullptr;
   HrcLibrary& hrcLibrary= parserFactory->getHrcLibrary();
+
+  if (!CurFileType) {
+    Menu->SetSelected(1);
+  }
 
   for (int idx = 0;; idx++) {
     type = hrcLibrary.enumerateFileTypes(idx);
@@ -296,7 +316,7 @@ bool FarEditorSet::chooseType()
     return false;
   }
 
-  ChooseTypeMenu menu(GetMsg(mAutoDetect), GetMsg(mFavorites));
+  ChooseTypeMenu menu(GetMsg(mAutoDetect), GetMsg(mFavorites), GetMsg(mDisable));
   FillTypeMenu(&menu, fe->getFileType());
 
   wchar_t bottom[20];
@@ -366,10 +386,12 @@ bool FarEditorSet::chooseType()
         if (i == 0) {
           UnicodeString* s = getCurrentFileName();
           fe->chooseFileType(s);
+          applySettingsToEditor(fe);
           delete s;
           break;
         }
         fe->setFileType(menu.GetFileType(i));
+        applySettingsToEditor(fe);
         break;
       }
     }
@@ -427,7 +449,6 @@ INT_PTR WINAPI SettingDialogProc(HANDLE hDlg, intptr_t Msg, intptr_t Param1, voi
 
 bool FarEditorSet::configure()
 {
-  // TODO  refactor this
   try {
     PluginDialogBuilder Builder(Info, MainGuid, PluginConfig, mSetup, L"config", SettingDialogProc, this);
     Builder.AddCheckbox(mTurnOff, &Opt.rEnabled);
@@ -673,9 +694,9 @@ bool FarEditorSet::TestLoadBase(const wchar_t* catalogPath, const wchar_t* userH
     parserFactoryLocal = std::make_unique<ParserFactory>();
     parserFactoryLocal->loadCatalog(tpath.get());
     auto& hrcLibraryLocal = parserFactoryLocal->getHrcLibrary();
-    LoadUserHrd(userHrdPathS.get(), parserFactoryLocal.get());
-    LoadUserHrc(userHrcPathS.get(), parserFactoryLocal.get());
     FarHrcSettings p(this, parserFactoryLocal.get());
+    p.loadUserHrd(userHrdPathS.get());
+    p.loadUserHrc(userHrdPathS.get());
     p.readPluginHrcSettings(pluginPath.get());
     p.readUserProfile();
 
@@ -766,9 +787,9 @@ void FarEditorSet::ReloadBase()
     parserFactory->loadCatalog(sCatalogPathExp.get());
     HrcLibrary& hrcLibrary = parserFactory->getHrcLibrary();
     defaultType = hrcLibrary.getFileType(UnicodeString(name_DefaultScheme));
-    LoadUserHrd(sUserHrdPathExp.get(), parserFactory.get());
-    LoadUserHrc(sUserHrcPathExp.get(), parserFactory.get());
     FarHrcSettings p(this, parserFactory.get());
+    p.loadUserHrd(sUserHrdPathExp.get());
+    p.loadUserHrc(sUserHrcPathExp.get());
     p.readPluginHrcSettings(pluginPath.get());
     p.readUserProfile();
 
@@ -809,19 +830,12 @@ FarEditor* FarEditorSet::addCurrentEditor()
     return nullptr;
   }
 
-  auto* editor = new FarEditor(&Info, parserFactory.get(), true);
+  UnicodeString* s = getCurrentFileName();
+  auto* editor = new FarEditor(&Info, parserFactory.get(), s);
+  delete s;
   std::pair<intptr_t, FarEditor*> pair_editor(ei.EditorID, editor);
   farEditorInstances.emplace(pair_editor);
-  UnicodeString* s = getCurrentFileName();
-  editor->chooseFileType(s);
-  delete s;
-  editor->setTrueMod(Opt.TrueModOn);
-  editor->setRegionMapper(regionMapper.get());
-  editor->setDrawPairs(Opt.drawPairs);
-  editor->setDrawSyntax(Opt.drawSyntax);
-  editor->setOutlineStyle(Opt.oldOutline);
-  editor->setCrossState(Opt.drawCross, Opt.CrossStyle);
-
+  applySettingsToEditor(editor);
   return editor;
 }
 
@@ -888,14 +902,15 @@ void FarEditorSet::enableColorer()
   ReloadBase();
 }
 
-void FarEditorSet::ApplySettingsToEditors()
+void FarEditorSet::applySettingsToEditor(FarEditor* editor)
 {
-  for (auto& farEditorInstance : farEditorInstances) {
-    farEditorInstance.second->setTrueMod(Opt.TrueModOn);
-    farEditorInstance.second->setDrawPairs(Opt.drawPairs);
-    farEditorInstance.second->setDrawSyntax(Opt.drawSyntax);
-    farEditorInstance.second->setOutlineStyle(Opt.oldOutline);
-    farEditorInstance.second->setCrossState(Opt.drawCross, Opt.CrossStyle);
+  if (editor->isColorerEnable()) {
+    editor->setTrueMod(Opt.TrueModOn);
+    editor->setRegionMapper(regionMapper.get());
+    editor->setDrawPairs(Opt.drawPairs);
+    editor->setDrawSyntax(Opt.drawSyntax);
+    editor->setOutlineStyle(Opt.oldOutline);
+    editor->setCrossState(Opt.drawCross, Opt.CrossStyle);
   }
 }
 
@@ -1037,46 +1052,6 @@ bool FarEditorSet::SetBgEditor() const
   return false;
 }
 
-void FarEditorSet::LoadUserHrd(const UnicodeString* filename, ParserFactory* pf)
-{
-  if (filename && filename->length()) {
-    xercesc::XercesDOMParser xml_parser;
-    XmlParserErrorHandler err_handler;
-    xml_parser.setErrorHandler(&err_handler);
-    xml_parser.setLoadExternalDTD(false);
-    xml_parser.setSkipDTDValidation(true);
-    uXmlInputSource config = XmlInputSource::newInstance(filename);
-    xml_parser.parse(*config->getInputSource());
-    if (err_handler.getSawErrors()) {
-      throw ParserFactoryException(UnicodeString("Error reading ").append(*filename));
-    }
-    xercesc::DOMDocument* catalog = xml_parser.getDocument();
-    xercesc::DOMElement* elem = catalog->getDocumentElement();
-    const XMLCh* tagHrdSets = catTagHrdSets;
-    const XMLCh* tagHrd = catTagHrd;
-    if (elem == nullptr || !xercesc::XMLString::equals(elem->getNodeName(), tagHrdSets)) {
-      throw Exception("main '<hrd-sets>' block not found");
-    }
-    for (xercesc::DOMNode* node = elem->getFirstChild(); node != nullptr; node = node->getNextSibling()) {
-      if (node->getNodeType() == xercesc::DOMNode::ELEMENT_NODE) {
-        auto* subelem = dynamic_cast<xercesc::DOMElement*>(node);
-        if (subelem && xercesc::XMLString::equals(subelem->getNodeName(), tagHrd)) {
-          auto hrd = CatalogParser::parseHRDSetsChild(subelem);
-          if (hrd)
-            pf->addHrd(std::move(hrd));
-        }
-      }
-    }
-  }
-}
-
-void FarEditorSet::LoadUserHrc(const UnicodeString* filename, ParserFactory* pf)
-{
-  if (filename && !filename->isEmpty()) {
-    pf->loadHrcPath(*filename);
-  }
-}
-
 bool FarEditorSet::configureHrc(bool call_from_editor)
 {
   if (!Opt.rEnabled) {
@@ -1205,13 +1180,12 @@ void FarEditorSet::disableColorerInEditor()
 
   auto it_editor = farEditorInstances.find(ei.EditorID);
   if (it_editor != farEditorInstances.end()) {
-    it_editor->second->cleanEditor();
-    delete it_editor->second;
-    farEditorInstances.erase(it_editor);
+    it_editor->second->setFileType(nullptr);
+  }else {
+    auto* new_editor = new FarEditor(&Info, parserFactory.get(), nullptr);
+    std::pair<intptr_t, FarEditor*> pair_editor(ei.EditorID, new_editor);
+    farEditorInstances.emplace(pair_editor);
   }
-  auto* new_editor = new FarEditor(&Info, parserFactory.get(), false);
-  std::pair<intptr_t, FarEditor*> pair_editor(ei.EditorID, new_editor);
-  farEditorInstances.emplace(pair_editor);
 }
 
 void FarEditorSet::enableColorerInEditor()
@@ -1227,8 +1201,9 @@ void FarEditorSet::enableColorerInEditor()
     farEditorInstances.erase(it_editor);
   }
 
-  auto* new_editor = addCurrentEditor();
-  new_editor->editorEvent(EE_REDRAW, EEREDRAW_ALL);
+  if (auto* new_editor = addCurrentEditor()) {
+    new_editor->editorEvent(EE_REDRAW, EEREDRAW_ALL);
+  }
 }
 
 void FarEditorSet::addEventTimer()
@@ -1400,6 +1375,7 @@ void* FarEditorSet::macroTypes(FARMACROAREA area, OpenMacroInfo* params)
       auto file_type = hrcLibrary.getFileType(&new_type);
       if (file_type) {
         editor->setFileType(file_type);
+        applySettingsToEditor(editor);
         return INVALID_HANDLE_VALUE;
       }
       else
@@ -1760,10 +1736,10 @@ void* FarEditorSet::macroParams(FARMACROAREA area, OpenMacroInfo* params)
   if (UnicodeString("Get").caseCompare(command, 0) == 0) {
     if (params->Count > 3 && FMVT_STRING == params->Values[2].Type && FMVT_STRING == params->Values[3].Type) {
       UnicodeString type = UnicodeString(params->Values[2].String);
-      UnicodeString param_name = UnicodeString(params->Values[3].String);
 
       auto file_type = hrcLibrary.getFileType(&type);
       if (file_type) {
+        UnicodeString param_name = UnicodeString(params->Values[3].String);
         auto* value = file_type->getParamValue(param_name);
         auto* out_params = new FarMacroValue[1];
         if (value) {
