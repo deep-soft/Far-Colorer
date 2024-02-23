@@ -1,4 +1,4 @@
-# 2023-10-17 08:30
+# 2024-02-23 23:30
 name: act-Release
 
 on:
@@ -8,10 +8,10 @@ on:
 #      - "v*"
 env:
   PROG_NAME: 'Far-Colorer'
+  BUILD_TYPE: Release
 
 jobs:
-
-  build-artifacts:
+  build:
     strategy:
       fail-fast: false
       matrix:
@@ -22,7 +22,6 @@ jobs:
           - { build: ARM64,  arch: amd64_arm64, triplet: arm64-windows-static-rel, }
 
     env:
-      BUILD_TYPE: Release
       X_VCPKG_NUGET_ID_PREFIX: 'farcolorer'
       VCPKG_BINARY_SOURCES: 'clear;nuget,GitHub,readwrite'
 
@@ -64,6 +63,8 @@ jobs:
         shell: bash
         run: |
           rm ./*.7z || true;
+          rm ./*.zip || true;
+          rm -r ./build || true;
 
       - name: Install vcpkg
         run: |
@@ -82,14 +83,15 @@ jobs:
           -password "${{ secrets.PACKAGES_GITHUB_TOKEN }}"
 
       - name: Create Build folder
-        run: cmake -E make_directory build
+        run: |
+          cmake -E make_directory build
 
       - name: Configure CMake
         shell: bash
         working-directory: build
         run: >
           cmake $GITHUB_WORKSPACE -G "Ninja"
-          -DCMAKE_BUILD_TYPE=$BUILD_TYPE
+          -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
           -DCOLORER_BUILD_ARCH=${{ matrix.build }}
           -DCMAKE_TOOLCHAIN_FILE=$GITHUB_WORKSPACE/external/colorer/external/vcpkg/scripts/buildsystems/vcpkg.cmake
           -DVCPKG_TARGET_TRIPLET=${{ matrix.triplet }}
@@ -101,12 +103,13 @@ jobs:
       - name: Build
         working-directory: build
         shell: bash
-        run: cmake --build . --config $BUILD_TYPE
+        run: |
+          cmake --build . --config ${{ env.BUILD_TYPE }}
 
       - name: Install
         working-directory: build
         shell: bash
-        run: cmake --install . --config $BUILD_TYPE
+        run: cmake --install . --config ${{ env.BUILD_TYPE }}
 
       - name: Download scheme
         continue-on-error: true
@@ -143,47 +146,8 @@ jobs:
             rm ${{ env.farcolorer_withoutbase_name }} || true;
           fi
           7z a -m0=LZMA -mf=BCJ2 -mx9 ${{ env.farcolorer_name }} ./install/${{ env.PROG_NAME }}/* -xr!colorerpol.* -xr!colorerr.*
-          7z a -m0=LZMA -mf=BCJ2 -mx9 ${{ env.farcolorer_withoutbase_name }} ./install/${{ env.PROG_NAME }}/* -x!./install/${{ env.PROG_NAME }}/base
-          7z a -m0=LZMA -mf=off -mx9 ${{ env.farcolorer_pdb_name }} ./src/colorer.pdb
-
-      - name: Upload result to cache
-        uses: actions/upload-artifact@v3
-        with:
-          name: result
-          path: ./build/*.7z
-          retention-days: 1
-
-  publish-release:
-    needs: [ build-artifacts ]
-    runs-on: windows-2019
-
-    steps:
-      - name: Checkout source
-        uses: deep-soft/checkout@v4
-
-      #- name: Get version
-      #  id: get_version
-      #  uses: deep-soft/get-version-action@v3
-
-      - name: Get version
-        id: get_version
-        shell: bash
-        run: |
-          get_version=$(cat version4far.txt)
-          echo "version=$get_version"
-          echo "version=$get_version" >>$GITHUB_OUTPUT
-          echo "version=$get_version" >>$GITHUB_ENV
-
-      - name: Download result
-        uses: deep-soft/download-artifact@v3
-        with:
-          name: result
-
-#      - name: Create release
-#        shell: bash
-#        run: gh release create ${{ steps.get_version.outputs.version }} -t "${{ env.PROG_NAME }} ${{ steps.get_version.outputs.version }}" -n "New version" ./*.7z
-#        env:
-#          GITHUB_TOKEN: ${{github.token}}
+          # 7z a -m0=LZMA -mf=BCJ2 -mx9 ${{ env.farcolorer_withoutbase_name }} ./install/${{ env.PROG_NAME }}/* -x!./install/${{ env.PROG_NAME }}/base
+          # 7z a -m0=LZMA -mf=off -mx9 ${{ env.farcolorer_pdb_name }} ./src/colorer.pdb
 
       - name: Publish Release
         continue-on-error: true
@@ -193,7 +157,7 @@ jobs:
           tag_name: "v${{ env.version }}"
           body: "Far Colorer: v${{ env.version }}"
           files: |
-            ./*.7z
+            ${{ env.farcolorer_name }}
 
       - name: Prepare latest Release
         continue-on-error: false
@@ -201,9 +165,7 @@ jobs:
         run: |
           rm *pdb.7z || true;
           rm *wobase.7z || true;
-          mv ${{ env.PROG_NAME }}.x64*.7z ${{ env.PROG_NAME }}.x64.7z
-          mv ${{ env.PROG_NAME }}.x86*.7z ${{ env.PROG_NAME }}.x86.7z
-          mv ${{ env.PROG_NAME }}.ARM64*.7z ${{ env.PROG_NAME }}.ARM64.7z
+          mv ${{ env.farcolorer_name }} ${{ env.PROG_NAME }}.${{ matrix.build }}.7z
           echo ${{ env.version }} > ${{ env.PROG_NAME }}-latest.txt
 
       - name: Publish latest Release
@@ -214,7 +176,7 @@ jobs:
           tag_name: ${{ env.PROG_NAME }}-latest
           body: "Far Colorer latest: v${{ env.version }}"
           files: |
-            ./*.7z
+            ${{ env.PROG_NAME }}.${{ matrix.build }}.7z
             ${{ env.PROG_NAME }}-latest.txt
 
       - name: Cleanup
