@@ -4,7 +4,6 @@
 #include <colorer/handlers/LineRegionsSupport.h>
 #include <colorer/parsers/HRDNode.h>
 #include <colorer/viewer/TextConsoleViewer.h>
-#include <spdlog/logger.h>
 #include "ChooseTypeMenu.h"
 #include "FarEditor.h"
 #include "pcolorer.h"
@@ -242,7 +241,7 @@ class FarEditorSet
   static int getHrdArrayWithCurrent(const wchar_t* current, std::vector<const HrdNode*>* hrd_instances, std::vector<const wchar_t*>* out_array);
   // filetype "default"
   FileType* defaultType = nullptr;
-  void addParamAndValue(FileType* filetype, const UnicodeString& name, const UnicodeString& value);
+  void addParamAndValue(FileType* filetype, const UnicodeString& name, const UnicodeString& value, const FileType* def_filetype = nullptr);
 
   std::unordered_map<intptr_t, FarEditor*> farEditorInstances;
   std::unique_ptr<ParserFactory> parserFactory;
@@ -260,7 +259,6 @@ class FarEditorSet
 
   unsigned int err_status = ERR_NO_ERROR;
 
-  std::shared_ptr<spdlog::logger> log;
 
   HANDLE hTimer = nullptr;
   HANDLE hTimerQueue = nullptr;
