@@ -4,12 +4,19 @@ name: act-Release
 
 on:
   workflow_dispatch:
+    inputs:
+      use_scache:
+        default: false
+        required: true
 #  push:
 #    tags:
 #      - "v*"
 env:
   PROG_NAME: 'Far-Colorer'
   BUILD_TYPE: Release
+  X_VCPKG_NUGET_ID_PREFIX: 'farcolorer'
+  VCPKG_BINARY_SOURCES: 'clear;nuget,GitHub,readwrite'
+  vcpkgGitCommitId: '53bef8994c541b6561884a8395ea35715ece75db'
 
 jobs:
   build:
@@ -22,12 +29,15 @@ jobs:
           - { build: x86,    arch: amd64_x86,   triplet: x86-windows-static-rel, }
           - { build: ARM64,  arch: amd64_arm64, triplet: arm64-windows-static-rel, }
 
-    env:
-      X_VCPKG_NUGET_ID_PREFIX: 'farcolorer'
-      VCPKG_BINARY_SOURCES: 'clear;nuget,GitHub,readwrite'
-
-    runs-on: windows-2019
+    runs-on: windows-2022
     steps:
+      - name: Export GitHub Actions cache environment variables
+        uses: deep-soft/github-script@v7
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL',     process.env.ACTIONS_CACHE_URL     || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
       - name: Checkout source
         uses: deep-soft/checkout@v4
         with:
@@ -48,6 +58,7 @@ jobs:
           echo "version=$get_version" >> $GITHUB_ENV;
 
       - name: Setup cache
+        if: ${ inputs.use_scache }}
         uses: deep-soft/cache@v4
         with:
           path: ${{ github.workspace }}
@@ -63,26 +74,41 @@ jobs:
           rm ./*.zip || true;
           rm -r ./build || true;
 
-      - name: Install vcpkg
+#      - name: Install vcpkg
+#        run: |
+#          cd external\colorer\external\vcpkg
+#          .\bootstrap-vcpkg.bat
+
+      - name: Setup vcpkg with Github Actions binary cache
+        uses: deep-soft/run-vcpkg@v11
+        with:
+          vcpkgDirectory: ${{ GITHUB_WORKSPACE }}\external\colorer\external\vcpkg
+          vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}
+
+      - name: Install vcpkg dependencies
+        env:
+          VCPKG_DEFAULT_HOST_TRIPLET: ${{ matrix.triplet }}
+        shell: bash
+        # $VCPKG_ROOT/vcpkg install libvpx:x64-windows-static libyuv:x64-windows-static opus:x64-windows-static aom:x64-windows-static
+        # $VCPKG_ROOT/vcpkg install --triplet x64-windows-static --x-install-root="$VCPKG_ROOT/installed"
         run: |
-          cd external\colorer\external\vcpkg
-          .\bootstrap-vcpkg.bat
+          $VCPKG_ROOT/vcpkg install --triplet ${{ matrix.triplet }} --x-install-root="$VCPKG_ROOT/installed"
 
       - name: Add C++ build tools to PATH
         uses: deep-soft/msvc-dev-cmd@v1
         with:
           arch: ${{ matrix.arch }}
 
-      - name: Setup NuGet Credentials for vpckg cache
-        shell: bash
-        run: >
-          `$VCPKG_INSTALLATION_ROOT/vcpkg fetch nuget | tail -n 1`
-          sources add
-          -source "https://nuget.pkg.github.com/colorer/index.json"
-          -storepasswordincleartext
-          -name "GitHub"
-          -username "${{ secrets.PACKAGES_GITHUB_USER }}"
-          -password "${{ secrets.PACKAGES_GITHUB_TOKEN }}"
+#      - name: Setup NuGet Credentials for vpckg cache
+#        shell: bash
+#        run: >
+#          `$VCPKG_INSTALLATION_ROOT/vcpkg fetch nuget | tail -n 1`
+#          sources add
+#          -source "https://nuget.pkg.github.com/colorer/index.json"
+#          -storepasswordincleartext
+#          -name "GitHub"
+#          -username "${{ secrets.PACKAGES_GITHUB_USER }}"
+#          -password "${{ secrets.PACKAGES_GITHUB_TOKEN }}"
 
       - name: Create Build folder
         # cmake -E make_directory build
