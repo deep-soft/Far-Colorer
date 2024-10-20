@@ -2,25 +2,25 @@ name: Build
 
 on:
   workflow_dispatch:
-#  push:
-#    branches:
-#      - master
-#    paths-ignore:
-#      - '.github/workflows/clean_workflow.yml'
-#      - '.github/workflows/prebuild.yml'
-#      - '.github/workflows/farcolorer-release.yml'
-#      - 'ci/**'
-#      - 'docs/**'
-#      - 'scripts/**'
-#      - '.clang-format'
-#      - '.gitignore'
-#      - 'CMakePresets.json'
-#      - 'LICENSE'
-#      - 'README.md'
-#      - 'version4far.txt'
-#  pull_request:
-#    branches:
-#      - master
+  push:
+    branches:
+      - master
+    paths-ignore:
+      - '.github/workflows/clean_workflow.yml'
+      - '.github/workflows/prebuild.yml'
+      - '.github/workflows/farcolorer-release.yml'
+      - 'ci/**'
+      - 'docs/**'
+      - 'scripts/**'
+      - '.clang-format'
+      - '.gitignore'
+      - 'CMakePresets.json'
+      - 'LICENSE'
+      - 'README.md'
+      - 'version4far.txt'
+  pull_request:
+    branches:
+      - master
 
 env:
   BUILD_TYPE: Release
