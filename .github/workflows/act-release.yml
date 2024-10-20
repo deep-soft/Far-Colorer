@@ -41,7 +41,7 @@ jobs:
           script: |
             core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
             core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
-      
+
       - name: Checkout source
         uses: deep-soft/checkout@v4
         with:
@@ -88,6 +88,14 @@ jobs:
         run: |
           cd external\colorer\external\vcpkg
           .\bootstrap-vcpkg.bat
+
+      - name: Set NuGet cache environment variables
+        continue-on-error: true
+        if: ${{ inputs.use_nuget_cache }}
+        shell: bash
+        run: >
+          echo "X_VCPKG_NUGET_ID_PREFIX='farcolorer'" >> $GITHUB_ENV
+          echo "VCPKG_BINARY_SOURCES='clear;nuget,GitHub,readwrite'" >> $GITHUB_ENV
 
       - name: Setup NuGet Credentials for vpckg cache
         continue-on-error: true
