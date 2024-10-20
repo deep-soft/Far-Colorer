@@ -6,10 +6,10 @@ on:
   workflow_dispatch:
     inputs:
       use_scache:
-        default: false
+        default: 'false'
         required: true
       use_nuget_cache:
-        default: false
+        default: 'false'
         required: true
 
 #  push:
@@ -67,7 +67,7 @@ jobs:
           arch: ${{ matrix.arch }}
 
       - name: Setup cache
-        if: ${{ inputs.use_scache }}
+        if: ${{ inputs.use_scache == 'true' }}
         uses: deep-soft/cache@v4
         with:
           path: ${{ github.workspace }}
@@ -91,7 +91,7 @@ jobs:
 
       - name: Set NuGet cache environment variables
         continue-on-error: true
-        if: ${{ inputs.use_nuget_cache }}
+        if: ${{ inputs.use_nuget_cache == 'true' }}
         shell: bash
         run: >
           echo "X_VCPKG_NUGET_ID_PREFIX='farcolorer'" >> $GITHUB_ENV
@@ -99,7 +99,7 @@ jobs:
 
       - name: Setup NuGet Credentials for vpckg cache
         continue-on-error: true
-        if: ${{ inputs.use_nuget_cache }}
+        if: ${{ inputs.use_nuget_cache == 'true' }}
         shell: bash
         run: >
           `$VCPKG_INSTALLATION_ROOT/vcpkg fetch nuget | tail -n 1`
