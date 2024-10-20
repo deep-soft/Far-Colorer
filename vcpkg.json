@@ -1,16 +1,8 @@
 {
   "name": "farcolorer",
-  "version": "1.4.28",
+  "version": "1.5.0",
   "dependencies": [
     "minizip",
-    {
-      "name": "libxml2",
-      "default-features": false
-    },
-    {
-      "name": "fmt",
-      "version>=": "10.2.1"
-    },
     {
       "name": "icu",
       "version>=": "72.1#3",
@@ -18,6 +10,10 @@
       "features": [
         "data-archive"
       ]
+    },
+    {
+      "name": "libxml2",
+      "default-features": false
     }
   ],
   "builtin-baseline": "53bef8994c541b6561884a8395ea35715ece75db"
