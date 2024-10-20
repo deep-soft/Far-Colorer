@@ -4,6 +4,11 @@ name: act-Release
 
 on:
   workflow_dispatch:
+    inputs:
+      use_scache:
+        type: boolean
+        default: true
+        required: true
 #  push:
 #    tags:
 #      - "v*"
@@ -53,6 +58,7 @@ jobs:
           arch: ${{ matrix.arch }}
 
       - name: Setup cache
+        if: ${{ inputs.use_scache == 'true' }}
         uses: deep-soft/cache@v4
         with:
           path: ${{ github.workspace }}
@@ -69,11 +75,14 @@ jobs:
           rm -r ./build || true;
 
       - name: Install vcpkg
+        continue-on-error: true
         run: |
           cd external\colorer\external\vcpkg
           .\bootstrap-vcpkg.bat
 
       - name: Setup NuGet Credentials for vpckg cache
+        continue-on-error: true
+        if: ${{ inputs.use_scache == 'false' }}
         shell: bash
         run: >
           `$VCPKG_INSTALLATION_ROOT/vcpkg fetch nuget | tail -n 1`
@@ -85,10 +94,12 @@ jobs:
           -password "${{ secrets.PACKAGES_GITHUB_TOKEN }}"
 
       - name: Create Build folder
+        continue-on-error: true
         run: |
           cmake -E make_directory build
 
       - name: Configure CMake
+        continue-on-error: true
         shell: bash
         working-directory: build
         run: >
@@ -103,12 +114,14 @@ jobs:
           -DCMAKE_INSTALL_PREFIX=./install/${{ env.PROG_NAME }}
 
       - name: Build
+        continue-on-error: true
         working-directory: build
         shell: bash
         run: |
           cmake --build . --config ${{ env.BUILD_TYPE }}
 
       - name: Install
+        continue-on-error: true
         working-directory: build
         shell: bash
         run: |
@@ -133,6 +146,7 @@ jobs:
           7z x -y $zipfilename -o./install/${{ env.PROG_NAME }}/base
 
       - name: Set the pack file name
+        continue-on-error: true
         shell: bash
         run: |
           echo "farcolorer_name=${{ env.PROG_NAME }}.${{ matrix.build }}.${{ steps.get_version.outputs.version }}.7z" >> $GITHUB_ENV
@@ -140,6 +154,7 @@ jobs:
           echo "farcolorer_withoutbase_name=${{ env.PROG_NAME }}.${{ matrix.build }}.${{ steps.get_version.outputs.version }}.wobase.7z" >> $GITHUB_ENV
 
       - name: pack plugin
+        continue-on-error: true
         working-directory: build
         shell: bash
         run: |
@@ -164,7 +179,7 @@ jobs:
             build/*.7z
 
       - name: Prepare latest Release
-        continue-on-error: false
+        continue-on-error: true
         shell: bash
         run: |
           rm build/*pdb.7z || true;
@@ -173,7 +188,7 @@ jobs:
           echo ${{ env.version }} > build/${{ env.PROG_NAME }}-latest.txt
 
       - name: Publish latest Release
-        continue-on-error: false
+        continue-on-error: true
         uses: deep-soft/action-gh-release@v2.1
         with:
           draft: false
