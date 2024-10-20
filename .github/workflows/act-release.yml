@@ -16,8 +16,9 @@ env:
   PROG_NAME: 'Far-Colorer'
   BUILD_TYPE: Release
   X_VCPKG_NUGET_ID_PREFIX: 'farcolorer'
-  VCPKG_BINARY_SOURCES: 'clear;nuget,GitHub,readwrite'
-  vcpkgGitCommitId: '53bef8994c541b6561884a8395ea35715ece75db'
+  VCPKG_BINARY_SOURCES: 'clear;x-gha,nuget,GitHub,readwrite'
+  VCPKG_COMMIT_ID:      "f7423ee180c4b7f40d43402c2feb3859161ef625"
+  VCPKG_DIRECTORY:      "C:\\vcpkg"
 
 jobs:
   build:
@@ -83,7 +84,7 @@ jobs:
       - name: Setup vcpkg with Github Actions binary cache
         uses: deep-soft/run-vcpkg@v11
         with:
-          vcpkgDirectory: ${{ github.workspace }}\external\colorer\external\vcpkg
+          vcpkgDirectory: ${{ env.VCPKG_DIRECTORY }}
           vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}
 
       - name: Install vcpkg dependencies
