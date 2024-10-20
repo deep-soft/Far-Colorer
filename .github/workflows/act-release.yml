@@ -6,14 +6,21 @@ on:
   workflow_dispatch:
     inputs:
       use_scache:
-        default: 'true'
+        default: false
         required: true
+      use_nuget_cache:
+        default: false
+        required: true
+
 #  push:
 #    tags:
 #      - "v*"
 env:
   PROG_NAME: 'Far-Colorer'
   BUILD_TYPE: Release
+  # X_VCPKG_NUGET_ID_PREFIX: 'farcolorer'
+  # VCPKG_BINARY_SOURCES: 'clear;nuget,GitHub,readwrite'
+  VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
 
 jobs:
   build:
@@ -22,16 +29,19 @@ jobs:
       matrix:
         build: [ x64, x86 , ARM64 ]
         include:
-          - { build: x64,    arch: amd64,       triplet: x64-windows-static-rel, }
-          - { build: x86,    arch: amd64_x86,   triplet: x86-windows-static-rel, }
+          - { build: x64,    arch: amd64,       triplet: x64-windows-static-rel,   }
+          - { build: x86,    arch: amd64_x86,   triplet: x86-windows-static-rel,   }
           - { build: ARM64,  arch: amd64_arm64, triplet: arm64-windows-static-rel, }
-
-    env:
-      X_VCPKG_NUGET_ID_PREFIX: 'farcolorer'
-      VCPKG_BINARY_SOURCES: 'clear;nuget,GitHub,readwrite'
 
     runs-on: windows-2019
     steps:
+      - name: Export GitHub Actions cache environment variables
+        uses: actions/github-script@v7
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+      
       - name: Checkout source
         uses: deep-soft/checkout@v4
         with:
@@ -57,7 +67,7 @@ jobs:
           arch: ${{ matrix.arch }}
 
       - name: Setup cache
-        if: ${{ inputs.use_scache == 'true' }}
+        if: ${{ inputs.use_scache }}
         uses: deep-soft/cache@v4
         with:
           path: ${{ github.workspace }}
@@ -81,7 +91,7 @@ jobs:
 
       - name: Setup NuGet Credentials for vpckg cache
         continue-on-error: true
-        if: ${{ inputs.use_scache == 'false' }}
+        if: ${{ inputs.use_nuget_cache }}
         shell: bash
         run: >
           `$VCPKG_INSTALLATION_ROOT/vcpkg fetch nuget | tail -n 1`
