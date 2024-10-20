@@ -90,10 +90,9 @@ jobs:
 
       - name: Configure CMake
         shell: bash
-        # working-directory: build
-        # cmake $GITHUB_WORKSPACE -G "Ninja"
+        working-directory: build
         run: >
-          cmake -S . --build build -G "Ninja"
+          cmake $GITHUB_WORKSPACE -G "Ninja"
           -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
           -DCOLORER_BUILD_ARCH=${{ matrix.build }}
           -DCMAKE_TOOLCHAIN_FILE=$GITHUB_WORKSPACE/external/colorer/external/vcpkg/scripts/buildsystems/vcpkg.cmake
