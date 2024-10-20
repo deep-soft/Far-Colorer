@@ -6,6 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       use_scache:
+        type: boolean
         default: false
         required: true
 #  push:
@@ -58,7 +59,7 @@ jobs:
           echo "version=$get_version" >> $GITHUB_ENV;
 
       - name: Setup cache
-        if: ${ inputs.use_scache }}
+        if: ${{ inputs.use_scache }}
         uses: deep-soft/cache@v4
         with:
           path: ${{ github.workspace }}
