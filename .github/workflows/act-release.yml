@@ -1,0 +1,224 @@
+# 2025-01-12 23:10
+# act-release.yml
+name: act-Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      use_scache:
+        default: 'false'
+        required: true
+      use_nuget_cache:
+        default: 'false'
+        required: true
+
+#  push:
+#    tags:
+#      - "v*"
+env:
+  PROG_NAME: 'Far-Colorer'
+  BUILD_TYPE: Release
+  # X_VCPKG_NUGET_ID_PREFIX: 'farcolorer'
+  # VCPKG_BINARY_SOURCES: 'clear;nuget,GitHub,readwrite'
+  VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        build: [ x64, x86 , arm64 ]
+        legacy: [ON, OFF]
+        include:
+          - { build: x64,    arch: amd64       }
+          - { build: x86,    arch: amd64_x86   }
+          - { build: arn64,  arch: amd64_arm64 }
+
+    runs-on: windows-2019
+    steps:
+      - name: Export GitHub Actions cache environment variables
+        uses: actions/github-script@v7
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
+      - name: Checkout source
+        uses: deep-soft/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      #- name: Get version
+      #  id: get_version
+      #  uses: deep-soft/get-version-action@v4
+
+      - name: Get version
+        id: get_version
+        shell: bash
+        run: |
+          get_version=$(cat version4far.txt);
+          echo "version=$get_version";
+          echo "version=$get_version" >> $GITHUB_OUTPUT;
+          echo "version=$get_version" >> $GITHUB_ENV;
+
+      - name: Add C++ build tools to PATH
+        uses: deep-soft/msvc-dev-cmd@v1
+        with:
+          arch: ${{ matrix.arch }}
+
+      - name: Setup cache
+        if: ${{ inputs.use_scache == 'true' }}
+        uses: deep-soft/cache@v4
+        with:
+          path: ${{ github.workspace }}
+          key: cache-${{ matrix.arch }}
+          restore-keys: |
+            cache-${{ matrix.arch }}
+
+      - name: Cleanup
+        continue-on-error: true
+        shell: bash
+        run: |
+          rm ./*.7z     || true;
+          rm ./*.zip    || true;
+          rm -r ./build || true;
+
+      - name: Install vcpkg
+        continue-on-error: true
+        run: |
+          cd external\colorer\external\vcpkg
+          .\bootstrap-vcpkg.bat
+
+      - name: Setup NuGet Credentials for cache
+        continue-on-error: true
+        if: ${{ inputs.use_nuget_cache == 'true' }}
+        shell: bash
+        run: >
+          `vcpkg fetch nuget | tail -n 1`
+          sources add
+          -source "https://nuget.pkg.github.com/colorer/index.json"
+          -storepasswordincleartext
+          -name "GitHub"
+          -username "${{ secrets.PACKAGES_GITHUB_USER }}"
+          -password "${{ secrets.PACKAGES_GITHUB_TOKEN }}"
+
+      - name: Create Build folder
+        continue-on-error: true
+        run: |
+          cmake -E make_directory build
+
+      - name: Configure CMake
+        continue-on-error: true
+        shell: bash
+        working-directory: build
+        run: >
+          cmake $GITHUB_WORKSPACE -G "Ninja"
+          -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
+          -DCOLORER_BUILD_ARCH=${{ matrix.build }}
+          -DCMAKE_TOOLCHAIN_FILE=$GITHUB_WORKSPACE/external/colorer/external/vcpkg/scripts/buildsystems/vcpkg.cmake
+          -DFARCOLORER_LEGACY=${{ matrix.legacy }}
+          -DCMAKE_INSTALL_PREFIX=./install/${{ env.PROG_NAME }}
+
+      - name: Build
+        continue-on-error: true
+        working-directory: build
+        shell: bash
+        run: |
+          cmake --build . --config ${{ env.BUILD_TYPE }}
+
+      - name: Install
+        continue-on-error: true
+        working-directory: build
+        shell: bash
+        run: |
+          cmake --install . --config ${{ env.BUILD_TYPE }}
+
+      - name: Download scheme
+        continue-on-error: true
+        working-directory: build
+        shell: bash
+        run: |
+          # echo "ls1"
+          # ls -la *.zip || true
+          zipfilename="$(find . -name "colorer-base*.zip")"
+          if [[ -f $zipfilename ]]; then
+            rm $zipfilename
+          fi
+          curl -s https://api.github.com/repos/colorer/Colorer-schemes/releases/latest | grep -o "https://.*colorer-base\.allpacked.*.zip" | xargs curl -fsLJO
+          # echo "ls2"
+          # ls -la *.zip
+          zipfilename="$(find . -name "colorer-base*.zip")"
+          echo $zipfilename
+          7z x -y $zipfilename -o./install/${{ env.PROG_NAME }}/base
+
+      - name: Set suffix
+        if: matrix.legacy == 'ON'
+        shell: bash
+        run: |
+          echo "suffix=" >> $GITHUB_ENV
+      - name: Set suffix
+        if: matrix.legacy == 'OFF'
+        shell: bash
+        run: |
+          echo "suffix=.icu" >> $GITHUB_ENV
+
+      - name: Set the pack file name
+        continue-on-error: true
+        shell: bash
+        run: |
+          echo "farcolorer_name=${{ env.PROG_NAME }}.${{ matrix.build }}${{env.suffix}}.${{ steps.get_version.outputs.version }}.7z" >> $GITHUB_ENV
+          echo "farcolorer_pdb_name=${{ env.PROG_NAME }}.${{ matrix.build }}${{env.suffix}}.${{ steps.get_version.outputs.version }}.pdb.7z" >> $GITHUB_ENV
+          echo "farcolorer_withoutbase_name=${{ env.PROG_NAME }}.${{ matrix.build }}${{env.suffix}}.${{ steps.get_version.outputs.version }}.wobase.7z" >> $GITHUB_ENV
+
+      - name: pack plugin
+        continue-on-error: true
+        working-directory: build
+        shell: bash
+        run: |
+          if [[ -f ${{ env.farcolorer_name }} ]]; then
+            rm ${{ env.farcolorer_name }} || true;
+            rm ${{ env.farcolorer_pdb_name }} || true;
+            rm ${{ env.farcolorer_withoutbase_name }} || true;
+          fi
+          7z a -m0=LZMA -mf=BCJ2 -mx9 ${{ env.farcolorer_name }} ./install/${{ env.PROG_NAME }}/* -xr!colorerpol.* -xr!colorerr.*
+          7z a -m0=LZMA -mf=BCJ2 -mx9 ${{ env.farcolorer_withoutbase_name }} ./install/${{ env.PROG_NAME }}/* -x!./install/${{ env.PROG_NAME }}/base
+          7z a -m0=LZMA -mf=off  -mx9 ${{ env.farcolorer_pdb_name }} ./src/colorer.pdb
+
+      - name: Publish Release
+        continue-on-error: true
+        uses: deep-soft/action-gh-release@v2.1
+        # ${{ env.farcolorer_name }}
+        with:
+          draft: false
+          tag_name: "v${{ env.version }}"
+          body: "Far Colorer: v${{ env.version }}"
+          files: |
+            build/*.7z
+
+      - name: Prepare latest Release
+        continue-on-error: true
+        shell: bash
+        run: |
+          rm build/*pdb.7z || true;
+          rm build/*wobase.7z || true;
+          mv build/${{ env.farcolorer_name }} build/${{ env.PROG_NAME }}.${{ matrix.build }}.7z
+          echo ${{ env.version }} > build/${{ env.PROG_NAME }}-latest.txt
+
+      - name: Publish latest Release
+        continue-on-error: true
+        uses: deep-soft/action-gh-release@v2.1
+        with:
+          draft: false
+          tag_name: ${{ env.PROG_NAME }}-latest
+          body: "Far Colorer latest: v${{ env.version }}"
+          files: |
+            build/${{ env.PROG_NAME }}.${{ matrix.build }}.7z
+            build/${{ env.PROG_NAME }}-latest.txt
+
+      - name: Cleanup
+        continue-on-error: true
+        shell: bash
+        run: |
+          rm build/*.7z  || true;
+          rm build/*.zip || true;
