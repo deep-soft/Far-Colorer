@@ -202,8 +202,8 @@ jobs:
         run: |
           rm build/*pdb.7z || true;
           rm build/*wobase.7z || true;
-          mv build/${{ env.farcolorer_name }} build/${{ env.PROG_NAME }}.${{ matrix.build }}.7z
-          echo ${{ env.version }} > build/${{ env.PROG_NAME }}-latest.txt
+          mv build/${{ env.farcolorer_name }} build/${{ env.PROG_NAME }}${{env.suffix}}.${{ matrix.build }}.7z
+          echo ${{ env.version }}${{env.suffix}} > build/${{ env.PROG_NAME }}${{env.suffix}}-latest.txt
 
       - name: Publish latest Release
         continue-on-error: true
@@ -213,8 +213,8 @@ jobs:
           tag_name: ${{ env.PROG_NAME }}-latest
           body: "Far Colorer latest: v${{ env.version }}"
           files: |
-            build/${{ env.PROG_NAME }}.${{ matrix.build }}.7z
-            build/${{ env.PROG_NAME }}-latest.txt
+            build/${{ env.PROG_NAME }}${{env.suffix}}.${{ matrix.build }}.7z
+            build/${{ env.PROG_NAME }}${{env.suffix}}-latest.txt
 
       - name: Cleanup
         continue-on-error: true
