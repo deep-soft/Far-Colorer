@@ -80,14 +80,15 @@ jobs:
         continue-on-error: true
         shell: bash
         run: |
-          rm ./*.7z || true;
-          rm ./*.zip || true;
+          rm ./*.7z     || true;
+          rm ./*.zip    || true;
           rm -r ./build || true;
 
-      - name: Setup vcpkg
+      - name: Install vcpkg
         continue-on-error: true
         run: |
-          bootstrap-vcpkg.bat
+          cd external\colorer\external\vcpkg
+          .\bootstrap-vcpkg.bat
 
       - name: Setup NuGet Credentials for cache
         continue-on-error: true
@@ -113,7 +114,7 @@ jobs:
         working-directory: build
         run: >
           cmake $GITHUB_WORKSPACE -G "Ninja"
-          -DCMAKE_BUILD_TYPE=$BUILD_TYPE
+          -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
           -DCOLORER_BUILD_ARCH=${{ matrix.build }}
           -DCMAKE_TOOLCHAIN_FILE=$GITHUB_WORKSPACE/external/colorer/external/vcpkg/scripts/buildsystems/vcpkg.cmake
           -DFARCOLORER_LEGACY=${{ matrix.legacy }}
