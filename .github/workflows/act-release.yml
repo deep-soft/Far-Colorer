@@ -32,7 +32,7 @@ jobs:
         include:
           - { build: x64,    arch: amd64       }
           - { build: x86,    arch: amd64_x86   }
-          - { build: arn64,  arch: amd64_arm64 }
+          - { build: arm64,  arch: amd64_arm64 }
 
     runs-on: windows-2019
     steps:
