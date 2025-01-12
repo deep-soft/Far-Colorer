@@ -105,19 +105,18 @@ jobs:
       - name: Create Build folder
         continue-on-error: true
         run: |
-          mkdir -p _build
+          cmake -E make_directory build
 
       - name: Configure CMake
         continue-on-error: true
         shell: bash
-        # working-directory: build
-        #-DCMAKE_INSTALL_PREFIX=./install/${{ env.PROG_NAME }}
+        working-directory: build
         run: >
-          cmake -S . -B _build -G "Ninja"
-          -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
+          cmake $GITHUB_WORKSPACE -G "Ninja"
+          -DCMAKE_BUILD_TYPE=$BUILD_TYPE
           -DCOLORER_BUILD_ARCH=${{ matrix.build }}
+          -DCMAKE_TOOLCHAIN_FILE=$GITHUB_WORKSPACE/external/colorer/external/vcpkg/scripts/buildsystems/vcpkg.cmake
           -DFARCOLORER_LEGACY=${{ matrix.legacy }}
-          -DCMAKE_TOOLCHAIN_FILE=$VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake
           -DCMAKE_INSTALL_PREFIX=./install/${{ env.PROG_NAME }}
 
       - name: Build
@@ -125,7 +124,7 @@ jobs:
         working-directory: build
         shell: bash
         run: |
-          cmake --build _build --config ${{ env.BUILD_TYPE }} -j ${{ steps.cpu-cores.outputs.count }}
+          cmake --build . --config ${{ env.BUILD_TYPE }}
 
       - name: Install
         continue-on-error: true
@@ -152,13 +151,24 @@ jobs:
           echo $zipfilename
           7z x -y $zipfilename -o./install/${{ env.PROG_NAME }}/base
 
+      - name: Set suffix
+        if: matrix.legacy == 'ON'
+        shell: bash
+        run: |
+          echo "suffix=" >> $GITHUB_ENV
+      - name: Set suffix
+        if: matrix.legacy == 'OFF'
+        shell: bash
+        run: |
+          echo "suffix=.icu" >> $GITHUB_ENV
+
       - name: Set the pack file name
         continue-on-error: true
         shell: bash
         run: |
-          echo "farcolorer_name=${{ env.PROG_NAME }}.${{ matrix.build }}.${{ steps.get_version.outputs.version }}.7z" >> $GITHUB_ENV
-          echo "farcolorer_pdb_name=${{ env.PROG_NAME }}.${{ matrix.build }}.${{ steps.get_version.outputs.version }}.pdb.7z" >> $GITHUB_ENV
-          echo "farcolorer_withoutbase_name=${{ env.PROG_NAME }}.${{ matrix.build }}.${{ steps.get_version.outputs.version }}.wobase.7z" >> $GITHUB_ENV
+          echo "farcolorer_name=${{ env.PROG_NAME }}.${{ matrix.build }}${{env.suffix}}.${{ steps.get_version.outputs.version }}.7z" >> $GITHUB_ENV
+          echo "farcolorer_pdb_name=${{ env.PROG_NAME }}.${{ matrix.build }}${{env.suffix}}.${{ steps.get_version.outputs.version }}.pdb.7z" >> $GITHUB_ENV
+          echo "farcolorer_withoutbase_name=${{ env.PROG_NAME }}.${{ matrix.build }}${{env.suffix}}.${{ steps.get_version.outputs.version }}.wobase.7z" >> $GITHUB_ENV
 
       - name: pack plugin
         continue-on-error: true
