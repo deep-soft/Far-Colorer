@@ -1,4 +1,4 @@
-# 2025-01-12 23:10
+# 2025-01-22 23:10
 # act-release.yml
 name: act-Release
 
@@ -87,7 +87,7 @@ jobs:
       - name: Install vcpkg
         continue-on-error: true
         run: |
-          cd external\colorer\external\vcpkg
+          if exist external\colorer\external\vcpkg cd external\colorer\external\vcpkg
           .\bootstrap-vcpkg.bat
 
       - name: Setup NuGet Credentials for cache
@@ -109,14 +109,15 @@ jobs:
           cmake -E make_directory build
 
       - name: Configure CMake
-        continue-on-error: true
+        continue-on-error: false
         shell: bash
         working-directory: build
+        #-DCMAKE_TOOLCHAIN_FILE=$GITHUB_WORKSPACE/external/colorer/external/vcpkg/scripts/buildsystems/vcpkg.cmake
         run: >
           cmake $GITHUB_WORKSPACE -G "Ninja"
           -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
           -DCOLORER_BUILD_ARCH=${{ matrix.build }}
-          -DCMAKE_TOOLCHAIN_FILE=$GITHUB_WORKSPACE/external/colorer/external/vcpkg/scripts/buildsystems/vcpkg.cmake
+          -DCMAKE_TOOLCHAIN_FILE=$VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake
           -DFARCOLORER_LEGACY=${{ matrix.legacy }}
           -DCMAKE_INSTALL_PREFIX=./install/${{ env.PROG_NAME }}
 
