@@ -86,9 +86,9 @@ jobs:
 
       - name: Install vcpkg
         continue-on-error: true
+        #if exist external\colorer\external\vcpkg cd external\colorer\external\vcpkg
         run: |
-          if exist external\colorer\external\vcpkg cd external\colorer\external\vcpkg
-          .\bootstrap-vcpkg.bat
+          bootstrap-vcpkg.bat
 
       - name: Setup NuGet Credentials for cache
         continue-on-error: true
