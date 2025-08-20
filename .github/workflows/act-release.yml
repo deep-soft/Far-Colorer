@@ -34,7 +34,7 @@ jobs:
           - { build: x86,    arch: amd64_x86,   triplet: x86-win-static-rel}
           - { build: arm64,  arch: amd64_arm64, triplet: arm64-win-static-rel}
 
-    runs-on: windows-2019
+    runs-on: windows-2022
     steps:
       - name: Export GitHub Actions cache environment variables
         uses: actions/github-script@v7
